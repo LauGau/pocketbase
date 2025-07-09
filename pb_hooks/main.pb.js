@@ -19,4 +19,6 @@ onRecordCreateRequest((e) => {
     // Set the 'members' field directly on the record object.
     record.set("members", [authRecord.id]);
 
+	 e.next()
+
 }, "pinCollections")
