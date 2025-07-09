@@ -2,7 +2,7 @@
 // - We add the user as owner
 onRecordCreateRequest((e) => {
     const record = e.record;   // The record being created (can be modified directly)
-    const authRecord = e.httpContext.authRecord; // The authenticated user record
+    const authRecord = e.auth; // The authenticated user record
 
     // It's a good practice to ensure a user is authenticated.
     // If no user is authenticated (e.g. an admin creating a record via UI, or an API key request),
