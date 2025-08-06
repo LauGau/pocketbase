@@ -47,13 +47,14 @@ onRecordCreateRequest((e) => {
 }, "pins")
 
 
+
 /**
  * This file contains the hooks to atomically confirm attachments when a pin is created.
- * It uses a two-step process to ensure data integrity.
+ * It uses a two-step process to ensure data integrity and transactional safety.
  */
 
 /**
- * **Hook 1: Before the pin is created**
+ * **Step 1: Before the pin is created**
  * This hook intercepts the pin creation request. It moves the `pendingAttachments`
  * from the record data into the temporary request context (`e.httpContext`).
  * It then clears the `pendingAttachments` field on the record itself, ensuring
@@ -62,17 +63,18 @@ onRecordCreateRequest((e) => {
  * @param {import('pocketbase').RecordCreateEvent} e
  */
 onRecordBeforeCreate((e) => {
-	console.log('pin onRecordBeforeCreate hook fired...')
+	console.log('--- pin onRecordBeforeCreate hook fired ---')
 
 	const record = e.record
 	const pendingAttachmentIds = record.get('pendingAttachments')
 
 	if (pendingAttachmentIds && pendingAttachmentIds.length > 0) {
-		console.log(`Found ${pendingAttachmentIds.length} pending attachments to process.`)
+		console.log(`Found ${pendingAttachmentIds.length} pending attachments to process. Storing in httpContext.`)
 		// Store the IDs in the request context to pass them to the afterCreate hook
 		e.httpContext.set('pendingAttachmentIds', pendingAttachmentIds)
 
-		// Clear the field on the pin record so it's not saved to the database
+		// Clear the field on the pin record so it's not saved to the database.
+		// Using an empty array is more idiomatic for multi-relation fields.
 		record.set('pendingAttachments', [])
 	} else {
 		console.log('No pending attachments found on the pin record.')
@@ -80,34 +82,40 @@ onRecordBeforeCreate((e) => {
 }, 'pins')
 
 /**
- * **Hook 2: After the pin has been created**
+ * **Step 2: After the pin has been created**
  * This hook runs after the pin has been successfully saved. It retrieves the
  * attachment IDs from the request context and, within a transaction, updates
  * each attachment to link it to the new pin and mark it as "confirmed".
  *
- * @param {import('pocketbase').ModelEvent} e
+ * @param {import('pocketbase').RecordCreateEvent} e
  */
-onModelAfterCreate((e) => {
-	console.log('pin onModelAfterCreate hook fired...')
+onRecordAfterCreateRequest((e) => {
+	console.log('--- pin onRecordAfterCreateRequest hook fired ---')
 
-	const pin = e.model
-	// Retrieve the IDs from the request context
+	const pin = e.record
+	// Retrieve the IDs from the request context, NOT from the record itself.
 	const pendingAttachmentIds = e.httpContext.get('pendingAttachmentIds')
 
 	if (!pendingAttachmentIds || pendingAttachmentIds.length === 0) {
-		console.log('No pending attachments to confirm from context.')
+		console.log('No pending attachments found in httpContext to confirm.')
 		return
 	}
 
 	console.log(`Confirming ${pendingAttachmentIds.length} attachments for pin ${pin.getId()}`)
 
-	$app.dao().runInTransaction((txDao) => {
-		for (const attachmentId of pendingAttachmentIds) {
-			const attachment = txDao.findRecordById('attachments', attachmentId)
-			attachment.set('pin', pin.getId())
-			attachment.set('status', 'confirmed')
-			txDao.saveRecord(attachment)
-		}
-	})
+	try {
+		$app.dao().runInTransaction((txDao) => {
+			for (const attachmentId of pendingAttachmentIds) {
+				const attachment = txDao.findRecordById('attachments', attachmentId)
+				attachment.set('pin', pin.getId())
+				attachment.set('status', 'confirmed')
+				txDao.saveRecord(attachment)
+				console.log(`Confirmed attachment: ${attachmentId}`)
+			}
+		})
+		console.log('All attachments confirmed successfully in transaction.')
+	} catch (error) {
+		console.error('Error during attachment confirmation transaction:', error)
+	}
 }, 'pins')
 
