@@ -48,19 +48,54 @@ onRecordCreateRequest((e) => {
 
 
 /**
- * After a new pin is created, this hook finds all associated "pending"
- * attachments and updates them to be "confirmed" and linked to the new pin.
+ * This file contains the hooks to atomically confirm attachments when a pin is created.
+ * It uses a two-step process to ensure data integrity.
+ */
+
+/**
+ * **Hook 1: Before the pin is created**
+ * This hook intercepts the pin creation request. It moves the `pendingAttachments`
+ * from the record data into the temporary request context (`e.httpContext`).
+ * It then clears the `pendingAttachments` field on the record itself, ensuring
+ * this temporary data is not saved to the database.
+ *
+ * @param {import('pocketbase').RecordCreateEvent} e
+ */
+onRecordBeforeCreate((e) => {
+	console.log('pin onRecordBeforeCreate hook fired...')
+
+	const record = e.record
+	const pendingAttachmentIds = record.get('pendingAttachments')
+
+	if (pendingAttachmentIds && pendingAttachmentIds.length > 0) {
+		console.log(`Found ${pendingAttachmentIds.length} pending attachments to process.`)
+		// Store the IDs in the request context to pass them to the afterCreate hook
+		e.httpContext.set('pendingAttachmentIds', pendingAttachmentIds)
+
+		// Clear the field on the pin record so it's not saved to the database
+		record.set('pendingAttachments', [])
+	} else {
+		console.log('No pending attachments found on the pin record.')
+	}
+}, 'pins')
+
+/**
+ * **Hook 2: After the pin has been created**
+ * This hook runs after the pin has been successfully saved. It retrieves the
+ * attachment IDs from the request context and, within a transaction, updates
+ * each attachment to link it to the new pin and mark it as "confirmed".
  *
  * @param {import('pocketbase').ModelEvent} e
  */
 onModelAfterCreate((e) => {
-	console.log('pin afterCreate hook fired...')
+	console.log('pin onModelAfterCreate hook fired...')
 
 	const pin = e.model
-	const pendingAttachmentIds = pin.get('pendingAttachments')
+	// Retrieve the IDs from the request context
+	const pendingAttachmentIds = e.httpContext.get('pendingAttachmentIds')
 
 	if (!pendingAttachmentIds || pendingAttachmentIds.length === 0) {
-		console.log('No pending attachments to confirm.')
+		console.log('No pending attachments to confirm from context.')
 		return
 	}
 
@@ -75,3 +110,4 @@ onModelAfterCreate((e) => {
 		}
 	})
 }, 'pins')
+
