@@ -45,3 +45,33 @@ onRecordCreateRequest((e) => {
 	 e.next()
 
 }, "pins")
+
+
+/**
+ * After a new pin is created, this hook finds all associated "pending"
+ * attachments and updates them to be "confirmed" and linked to the new pin.
+ *
+ * @param {import('pocketbase').ModelEvent} e
+ */
+onModelAfterCreate((e) => {
+	console.log('pin afterCreate hook fired...')
+
+	const pin = e.model
+	const pendingAttachmentIds = pin.get('pendingAttachments')
+
+	if (!pendingAttachmentIds || pendingAttachmentIds.length === 0) {
+		console.log('No pending attachments to confirm.')
+		return
+	}
+
+	console.log(`Confirming ${pendingAttachmentIds.length} attachments for pin ${pin.getId()}`)
+
+	$app.dao().runInTransaction((txDao) => {
+		for (const attachmentId of pendingAttachmentIds) {
+			const attachment = txDao.findRecordById('attachments', attachmentId)
+			attachment.set('pin', pin.getId())
+			attachment.set('status', 'confirmed')
+			txDao.saveRecord(attachment)
+		}
+	})
+}, 'pins')
