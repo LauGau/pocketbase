@@ -63,7 +63,8 @@ onRecordCreateRequest((e) => {
  * @param {import('pocketbase').RecordCreateEvent} e
  */
 onRecordBeforeCreate((e) => {
-	console.log('--- pin onRecordBeforeCreate hook fired ---')
+	// console.log('--- pin onRecordBeforeCreate hook fired ---')
+	$app.logger().debug('--- pin onRecordBeforeCreate hook fired ---')
 
 	const record = e.record
 	const pendingAttachmentIds = record.get('pendingAttachments')
@@ -77,7 +78,8 @@ onRecordBeforeCreate((e) => {
 		// Using an empty array is more idiomatic for multi-relation fields.
 		record.set('pendingAttachments', [])
 	} else {
-		console.log('No pending attachments found on the pin record.')
+		// console.log('No pending attachments found on the pin record.')
+		$app.logger().debug('No pending attachments found on the pin record.')
 	}
 }, 'pins')
 
@@ -90,32 +92,43 @@ onRecordBeforeCreate((e) => {
  * @param {import('pocketbase').RecordCreateEvent} e
  */
 onRecordAfterCreateRequest((e) => {
-	console.log('--- pin onRecordAfterCreateRequest hook fired ---')
+	// console.log('--- pin onRecordAfterCreateRequest hook fired ---')
+	$app.logger().debug('--- pin onRecordAfterCreateRequest hook fired ---')
 
 	const pin = e.record
 	// Retrieve the IDs from the request context, NOT from the record itself.
 	const pendingAttachmentIds = e.httpContext.get('pendingAttachmentIds')
 
 	if (!pendingAttachmentIds || pendingAttachmentIds.length === 0) {
-		console.log('No pending attachments found in httpContext to confirm.')
+		// console.log('No pending attachments found in httpContext to confirm.')
+		$app.logger().debug("No pending attachments found in httpContext to confirm.")
 		return
 	}
 
-	console.log(`Confirming ${pendingAttachmentIds.length} attachments for pin ${pin.getId()}`)
+	// console.log(`Confirming ${pendingAttachmentIds.length} attachments for pin ${pin.getId()}`)
+	$app.logger().debug("Confirming pending attachement...", "pin", pin.getId(), "pendingAttachmentIds", pendingAttachmentIds)
 
 	try {
-		$app.dao().runInTransaction((txDao) => {
+		$app.dao().runInTransaction((txApp) => {
 			for (const attachmentId of pendingAttachmentIds) {
-				const attachment = txDao.findRecordById('attachments', attachmentId)
+				const attachment = txApp.findRecordById('attachments', attachmentId)
 				attachment.set('pin', pin.getId())
 				attachment.set('status', 'confirmed')
-				txDao.saveRecord(attachment)
-				console.log(`Confirmed attachment: ${attachmentId}`)
+				txApp.saveRecord(attachment)
+				// console.log(`Confirmed attachment: ${attachmentId}`)
+				txApp.logger().debug(
+					"Confirmed attachment:",
+					"attachmentId", attachmentId,
+					"pinId", pin.getId(),
+				)
 			}
 		})
-		console.log('All attachments confirmed successfully in transaction.')
+		// console.log('All attachments confirmed successfully in transaction.')
+		$app.logger().debug("All attachments confirmed successfully in transaction.")
+
 	} catch (error) {
-		console.error('Error during attachment confirmation transaction:', error)
+		// console.error('Error during attachment confirmation transaction:', error)
+		$app.logger().debug("Error during attachment confirmation transaction:", "error", error)
 	}
 }, 'pins')
 
