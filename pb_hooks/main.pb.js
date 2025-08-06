@@ -62,7 +62,7 @@ onRecordCreateRequest((e) => {
  *
  * @param {import('pocketbase').RecordCreateEvent} e
  */
-onRecordBeforeCreate((e) => {
+onRecordCreateRequest((e) => {
 	// console.log('--- pin onRecordBeforeCreate hook fired ---')
 	$app.logger().debug('--- pin onRecordBeforeCreate hook fired ---')
 
@@ -77,11 +77,12 @@ onRecordBeforeCreate((e) => {
 		// Clear the field on the pin record so it's not saved to the database.
 		// Using an empty array is more idiomatic for multi-relation fields.
 		record.set('pendingAttachments', [])
+		e.next()
 	} else {
 		// console.log('No pending attachments found on the pin record.')
 		$app.logger().debug('No pending attachments found on the pin record.')
 	}
-}, 'pins')
+}, "pins")
 
 /**
  * **Step 2: After the pin has been created**
@@ -91,7 +92,7 @@ onRecordBeforeCreate((e) => {
  *
  * @param {import('pocketbase').RecordCreateEvent} e
  */
-onRecordAfterCreateRequest((e) => {
+onRecordAfterCreateSuccess((e) => {
 	// console.log('--- pin onRecordAfterCreateRequest hook fired ---')
 	$app.logger().debug('--- pin onRecordAfterCreateRequest hook fired ---')
 
@@ -125,6 +126,7 @@ onRecordAfterCreateRequest((e) => {
 		})
 		// console.log('All attachments confirmed successfully in transaction.')
 		$app.logger().debug("All attachments confirmed successfully in transaction.")
+		e.next()
 
 	} catch (error) {
 		// console.error('Error during attachment confirmation transaction:', error)
