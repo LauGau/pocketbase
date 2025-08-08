@@ -1,0 +1,10 @@
+# PocketBase
+# Ignore the local data directory to prevent committing the database
+# and other sensitive or environment-specific files.
+/pb_data/
+docker-compose.yml
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
