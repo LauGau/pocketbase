@@ -52,50 +52,83 @@ onRecordCreateRequest((e) => {
 // - We check the attachments and confim them
 onRecordAfterCreateSuccess((e) => {
 	const record = e.record
-	const pendingAttachmentIds = record.get('pendingAttachments')
+	let attachmentsToCreate = record.get('attachmentsToCreate')
+	const attachmentsToConfirm = record.get('attachmentsToConfirm')
 
-	if (pendingAttachmentIds && pendingAttachmentIds.length > 0) {
-		console.log(`Found ${pendingAttachmentIds.length} pending attachments to process. Storing in httpContext.`)
-		console.log('pendingAttachmentIds', pendingAttachmentIds,
-			'record', record)
-		
-		console.log({"e": e})
-		$app.logger().debug("E debug", "e", JSON.stringify(e))
+	$app.logger().debug('Pin created successfully. Processing attachments...', 'pinId', record.id, 'e', e)
 
-		$app.logger().debug('IF DEBUG',
-			'pendingAttachmentIds', pendingAttachmentIds,
-			'record', record,
-		)
+	attachmentsToCreate = JSON.parse(attachmentsToCreate)
 
-		// console.log(`Confirming ${pendingAttachmentIds.length} attachments for pin ${pin.getId()}`)
-		$app.logger().debug("Confirming pending attachement...", "pin", record.id, "pendingAttachmentIds", pendingAttachmentIds)
+	$app.logger().debug('Typo of attachmentsToCreate',
+		'type', typeof attachmentsToCreate,
+		"isArray", Array.isArray(attachmentsToCreate),
+		"arrayLength", attachmentsToCreate.length,
+		"attachmentsToCreate", attachmentsToCreate,
+	)
 
-		try {
-			// we use runInTransaction to batch process the attachments
-			$app.runInTransaction((txApp) => {
-				for (const attachmentId of pendingAttachmentIds) {
-					const attachment = txApp.findRecordById('attachments', attachmentId)
-					attachment.set('pin', record.id)
-					attachment.set('status', 'confirmed')
-					txApp.save(attachment)
-				}
+	const hasAttachmentsToProcess = attachmentsToCreate.length > 0 || attachmentsToConfirm.length > 0;
 
-				// Clear the field on the pin record so it's not saved to the database.
-				// Using an empty array is more idiomatic for multi-relation fields.
-				record.set('pendingAttachments', [])
-				txApp.save(record)
-			})
-
-
-		} catch (error) {
-			// console.error('Error during attachment confirmation transaction:', error)
-			$app.logger().debug("Error during attachment confirmation transaction:", "error", error)
-		}
-
-		
-	} else {
-		// console.log('No pending attachments found on the pin record.')
-		$app.logger().debug('No pending attachments found on the pin record.')
+	if (!hasAttachmentsToProcess) {
+		$app.logger().debug('No attachments to process for pin.', 'pinId', pinRecord.id)
+		return; // Nothing to do
 	}
-	e.next()
-}, "pins")
+
+	try {
+
+		const collection = $app.findCollectionByNameOrId('attachments')
+		// we use runInTransaction to batch process the attachments
+		$app.runInTransaction((txApp) => {
+			// 1. Create new attachments
+			if (attachmentsToCreate && attachmentsToCreate.length > 0) {
+				$app.logger().debug(`Creating ${attachmentsToCreate.length} new attachments...`, 'pinId', record.id)
+				for (const attData of attachmentsToCreate) {
+
+					try {
+						const attachment = new Record(collection)
+						attachment.set('pin', record.id)
+						attachment.set('type', attData.type)
+						attachment.set('data', attData.data)
+						attachment.set('status', 'confirmed')
+						attachment.set('order', attData.order)
+						attachment.set('creator', record.get('creator')) // Ensure creator is set
+						txApp.save(attachment)
+						$app.logger().debug(`Created attachment: ${attachment.id}`)
+					} catch (error) {
+						$app.logger().error(`Failed to create attachment`, 'error', error, 'attachmentData', attData)
+						throw error // Rollback transaction on failure
+					}
+				}
+			}
+
+			// 2. Confirm pre-uploaded attachments
+			if (attachmentsToConfirm && attachmentsToConfirm.length > 0) {
+				$app.logger().debug(`Confirming ${attachmentsToConfirm.length} existing attachments...`, 'pinId', record.id)
+				for (const attachmentId of attachmentsToConfirm) {
+					try {
+						const attachment = txApp.findRecordById('attachments', attachmentId)
+						attachment.set('pin', record.id)
+						attachment.set('status', 'confirmed')
+						txApp.save(attachment)
+						$app.logger().debug(`Confirmed attachment: ${attachmentId}`)
+					} catch (error) {
+						$app.logger().error(`Failed to confirm attachment`, 'error', error, 'attachmentId', attachmentId)
+						throw error // Rollback transaction on failure
+					}
+				}
+			}
+
+			// Clear the temporary fields on the pin record to keep the database clean.
+			record.set('attachmentsToCreate', null)
+			record.set('attachmentsToConfirm', [])
+			txApp.save(record)
+			$app.logger().debug('Temporary attachment fields cleared for pin', 'pinId', record.id)
+		})
+
+		$app.logger().debug('All attachments processed successfully in transaction.', 'pinId', record.id)
+	} catch (error) {
+		$app.logger().error('Error during attachment processing transaction:', 'error', error, 'pinId', record.id)
+	} finally {
+		e.next()
+	}
+
+}, 'pins')
