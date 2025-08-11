@@ -89,7 +89,7 @@ onRecordAfterCreateSuccess((e) => {
 						attachment.set('type', attData.type)
 						attachment.set('data', attData.data)
 						attachment.set('status', 'confirmed')
-						attachment.set('order', attData.order)
+						attachment.set('order', attData.newOrder + 1.0)
 						attachment.set('creator', record.get('creator')) // Ensure creator is set
 						txApp.save(attachment)
 						$app.logger().debug(`Created attachment: ${attachment.id}`)
