@@ -24,7 +24,7 @@ onRecordCreateRequest((e) => {
 }, "pinCollections")
 
 
-// After a user create a "pin"
+// After a user create a "pin" or an "attachement"
 // - We add the user as the creator
 onRecordCreateRequest((e) => {
     const record = e.record;   // The record being created (can be modified directly)
@@ -36,7 +36,7 @@ onRecordCreateRequest((e) => {
     if (!authRecord) {
         // If a user MUST be authenticated to create this record, throw an error.
         // This will prevent the record from being created and return a 400 response.
-        throw new BadRequestError("You must be logged in to create a pin.");
+        throw new BadRequestError("You must be logged in to create a pin or attachment.");
     }
 
     // Set the 'owner' field directly on the record object
@@ -44,7 +44,7 @@ onRecordCreateRequest((e) => {
 
 	 e.next()
 
-}, "pins")
+}, "pins", "attachments")
 
 
 
@@ -69,7 +69,7 @@ onRecordAfterCreateSuccess((e) => {
 	const hasAttachmentsToProcess = attachmentsToCreate.length > 0 || attachmentsToConfirm.length > 0;
 
 	if (!hasAttachmentsToProcess) {
-		$app.logger().debug('No attachments to process for pin.', 'pinId', pinRecord.id)
+		$app.logger().debug('No attachments to process for pin.', 'pinId', record.id)
 		return; // Nothing to do
 	}
 
@@ -130,5 +130,82 @@ onRecordAfterCreateSuccess((e) => {
 	} finally {
 		e.next()
 	}
+
+}, 'pins')
+
+
+onRecordUpdateRequest((e) => {
+	const utilsUrls = require(`${__hooks}/utils/urls.js`) // import the utils
+    const authRecord = e.auth; // The authenticated user record
+
+    if (!authRecord) {
+        // If a user MUST be authenticated to create this record, throw an error.
+        // This will prevent the record from being created and return a 400 response.
+        throw new BadRequestError("You must be logged in to create a pin or attachment.");
+    }
+
+	/*
+	*  —————————————————————————————————————————————
+	*  WARNING: always parse JSON to enable chaining
+	* 
+	*  urlMatchingData = e.record.original().get('urlMatching') // Without JSONS.parse...
+	*  urlMatchingData.patterns // ... this will not work
+	*/
+	const urlMatchingData = JSON.parse(e.record.get('urlMatching'))
+
+
+	const TESTDATA = {
+		example: "https://google.com/mail/",
+		patterns: ["*://*.upwwward.io/*", "*://google.com/map/", "*://trema.upwwward.io/*"],
+		type: "src"
+	}
+
+	const newUrlMatching = {
+		domains: utilsUrls.patternsToDomains(urlMatchingData.patterns),
+		patterns: urlMatchingData.patterns,
+		type: urlMatchingData.type
+	}
+
+	e.record.set('urlMatching', newUrlMatching) // replace "newUrlMatching by TESTDATA for quick test"
+    e.next()
+
+}, 'pins')
+
+
+// TODO: see how I can merge with the function above, ask Vince ?
+onRecordCreateRequest((e) => {
+	const utilsUrls = require(`${__hooks}/utils/urls.js`) // import the utils
+    const authRecord = e.auth; // The authenticated user record
+
+    if (!authRecord) {
+        // If a user MUST be authenticated to create this record, throw an error.
+        // This will prevent the record from being created and return a 400 response.
+        throw new BadRequestError("You must be logged in to create a pin or attachment.");
+    }
+
+	/*
+	*  —————————————————————————————————————————————
+	*  WARNING: always parse JSON to enable chaining
+	* 
+	*  urlMatchingData = e.record.original().get('urlMatching') // Without JSONS.parse...
+	*  urlMatchingData.patterns // ... this will not work
+	*/
+	const urlMatchingData = JSON.parse(e.record.get('urlMatching'))
+
+
+	const TESTDATA = {
+		example: "https://google.com/mail/",
+		patterns: ["*://*.upwwward.io/*", "*://google.com/map/", "*://trema.upwwward.io/*"],
+		type: "src"
+	}
+
+	const newUrlMatching = {
+		domains: utilsUrls.patternsToDomains(urlMatchingData.patterns),
+		patterns: urlMatchingData.patterns,
+		type: urlMatchingData.type
+	}
+
+	e.record.set('urlMatching', newUrlMatching) // replace "newUrlMatching by TESTDATA for quick test"
+    e.next()
 
 }, 'pins')
