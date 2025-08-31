@@ -52,12 +52,12 @@ onRecordCreateRequest((e) => {
 // - We check the attachments and confim them
 onRecordAfterCreateSuccess((e) => {
 	const record = e.record
-	let attachmentsToCreate = record.get('attachmentsToCreate')
+	// Safely parse attachmentsToCreate, providing a fallback to an empty array string
+	// to prevent errors if the field is null.
+	const attachmentsToCreate = JSON.parse(record.get('attachmentsToCreate') || '[]')
 	const attachmentsToConfirm = record.get('attachmentsToConfirm')
 
 	$app.logger().debug('Pin created successfully. Processing attachments...', 'pinId', record.id, 'e', e)
-
-	attachmentsToCreate = JSON.parse(attachmentsToCreate)
 
 	$app.logger().debug('Typo of attachmentsToCreate',
 		'type', typeof attachmentsToCreate,
@@ -66,7 +66,7 @@ onRecordAfterCreateSuccess((e) => {
 		"attachmentsToCreate", attachmentsToCreate,
 	)
 
-	const hasAttachmentsToProcess = attachmentsToCreate.length > 0 || attachmentsToConfirm.length > 0;
+	const hasAttachmentsToProcess = attachmentsToCreate.length > 0 || (attachmentsToConfirm && attachmentsToConfirm.length > 0);
 
 	if (!hasAttachmentsToProcess) {
 		$app.logger().debug('No attachments to process for pin.', 'pinId', record.id)
@@ -209,3 +209,7 @@ onRecordCreateRequest((e) => {
     e.next()
 
 }, 'pins')
+
+// --- Load custom routes ---
+// We need to load the route files explicitly from our main hooks file.
+require(`${__hooks}/routes/pins-for-url.js`);

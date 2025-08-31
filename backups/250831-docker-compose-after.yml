@@ -1,0 +1,28 @@
+services:
+  pocketbase:
+    # This uses the official PocketBase image.
+    # You can also build from your local Dockerfile for consistency with Railway.
+    # To do that, comment the `image` line and uncomment the `build` section.
+    # image: ghcr.io/pocketbase/pocketbase:latest
+    build:
+      context: .
+      args:
+        PB_VERSION: 0.28.4 # Make sure this matches your Dockerfile
+    container_name: pinback-pb-local
+    restart: unless-stopped
+    ports:
+      # Exposes the local service on http://localhost:8090
+      - "127.0.0.1:8090:8080"
+    volumes:
+      # Mounts local data, hooks, and migrations into the container
+      # This line is the key for live-reloading your hooks
+      - ./pb_hooks:/pb/pb_hooks
+      # This line persists your database data between container restarts
+      - ./pb_data:/pb/pb_data
+      # It's also good practice to mount your migrations
+      - ./pb_migrations:/pb/pb_migrations
+    command: >
+      /pb/pocketbase
+      serve
+      --http="0.0.0.0:8080"
+      --hooksDir="/pb/pb_hooks"

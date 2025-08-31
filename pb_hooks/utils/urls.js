@@ -176,9 +176,34 @@ if(DEBUG) {
 }
 
 
+function generateDomainKeys(hostname) {
+
+	console.log("generateDomainKeys called !");
+    const keys = new Set();
+    const parts = hostname.split('.');
+    while (parts.length >= 2) {
+        keys.add(parts.join('.'));
+        parts.shift();
+    }
+    return Array.from(keys);
+}
+
+function patternToRegExp(pattern) {
+    if (typeof pattern !== 'string' || !pattern) {
+        return new RegExp('^$'); // Return a regex that matches nothing
+    }
+    const escapedPattern = pattern
+        .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/\*/g, '.*');
+    return new RegExp(`^${escapedPattern}$`);
+}
+
+
 
 module.exports = {
     isValidPattern,
     patternsToDomains,
 	extractDomainFromPattern,
+	generateDomainKeys,
+	patternToRegExp
 };
