@@ -46,28 +46,66 @@ if (DEBUG) {
 	console.log(isValidPattern('https://.google.com'));             // false (starts with a dot)
 }
 
-
 /**
- * Converts a list of URL patterns into a unique set of domain keys for database indexing.
- * Uses a helper function to intelligently extract the most specific domain part.
- * @param {string[]} patterns An array of URL patterns.
- * @returns {string[]} An array of unique domain keys.
+ * Converts URL match patterns into a cleaned, unique array of base domains for querying.
+ * - Strips leading '*.', trailing '.*'
+ * - Treats ambiguous middle wildcards ('www.*.com') as a global wildcard.
+ * @param {string[]} patterns - An array of URL match patterns.
+ * @returns {string[]} A unique array of processed domain names.
  */
-function patternsToDomains(patterns) {
-    if (!patterns || !Array.isArray(patterns)) {
+const patternsToDomains = (patterns) => {
+    const WILDCARD_DOMAIN = "_WILDCARD_";
+    const domains = new Set();
+
+    if (!Array.isArray(patterns)) {
         return [];
     }
 
-    const domains = new Set();
     for (const pattern of patterns) {
-        const domainKey = extractDomainFromPattern(pattern);
-        if (domainKey) {
-            domains.add(domainKey);
+        let p = pattern.trim();
+
+        if (p === "*" || p === "*://*/*") {
+            domains.add(WILDCARD_DOMAIN);
+            continue;
+        }
+
+        const hostMatch = p.match(/(?:[a-zA-Z]+:\/\/)?([^/]+)/);
+
+        if (!hostMatch || !hostMatch[1]) {
+            console.log(`Could not extract host from pattern: "${p}"`);
+            continue;
+        }
+
+        let hostname = hostMatch[1].replace(/:\d+$/, ""); // Get host, strip port
+
+        // ## NEW RULES START HERE ##
+
+        // Rule 1: Check for overly generic or ambiguous middle wildcards.
+        const parts = hostname.split('.');
+        if (
+            parts.every(part => part === '*' || part === '') || // Catches '*', '*.*', etc.
+            (parts.length > 2 && parts.slice(1, -1).includes('*')) // Catches 'www.*.com', 'a.*.c.com'
+        ) {
+            domains.add(WILDCARD_DOMAIN);
+            continue;
+        }
+
+        // Rule 2: Strip leading and trailing wildcards to get a clean base domain.
+        if (hostname.startsWith("*.")) {
+            hostname = hostname.substring(2); // '*.wef.com' -> 'wef.com'
+        }
+        if (hostname.endsWith(".*")) {
+            hostname = hostname.slice(0, -2); // 'sylviecabral.*' -> 'sylviecabral'
+        }
+
+        // Rule 3: Add the final, cleaned domain.
+        if (hostname) {
+            domains.add(hostname);
         }
     }
 
     return Array.from(domains);
-}
+};
 
 /**
  * [Helper Function] Extracts the most specific, indexable domain key from a pattern.
