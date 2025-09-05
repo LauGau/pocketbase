@@ -54,8 +54,10 @@ onRecordAfterCreateSuccess((e) => {
 	const record = e.record
 	// Safely parse attachmentsToCreate, providing a fallback to an empty array string
 	// to prevent errors if the field is null.
+
+	$app.logger().debug('Going to JSON.parse after create success...', 'pinId', record.id, 'e', e)
 	const attachmentsToCreate = JSON.parse(record.get('attachmentsToCreate') || '[]')
-	const attachmentsToConfirm = record.get('attachmentsToConfirm')
+	const attachmentsToConfirm = JSON.parse(record.get('attachmentsToConfirm') || '[]')
 
 	$app.logger().debug('Pin created successfully. Processing attachments...', 'pinId', record.id, 'e', e)
 
@@ -66,7 +68,7 @@ onRecordAfterCreateSuccess((e) => {
 		"attachmentsToCreate", attachmentsToCreate,
 	)
 
-	const hasAttachmentsToProcess = attachmentsToCreate.length > 0 || (attachmentsToConfirm && attachmentsToConfirm.length > 0);
+	const hasAttachmentsToProcess = attachmentsToCreate.length > 0 || attachmentsToConfirm != null;
 
 	if (!hasAttachmentsToProcess) {
 		$app.logger().debug('No attachments to process for pin.', 'pinId', record.id)
@@ -103,15 +105,16 @@ onRecordAfterCreateSuccess((e) => {
 			// 2. Confirm pre-uploaded attachments
 			if (attachmentsToConfirm && attachmentsToConfirm.length > 0) {
 				$app.logger().debug(`Confirming ${attachmentsToConfirm.length} existing attachments...`, 'pinId', record.id)
-				for (const attachmentId of attachmentsToConfirm) {
+				for (const attData of attachmentsToConfirm) {
 					try {
-						const attachment = txApp.findRecordById('attachments', attachmentId)
+						const attachment = txApp.findRecordById('attachments', attData.id)
 						attachment.set('pin', record.id)
+						attachment.set('order', attData.order + 1.0)
 						attachment.set('status', 'confirmed')
 						txApp.save(attachment)
-						$app.logger().debug(`Confirmed attachment: ${attachmentId}`)
+						$app.logger().debug(`Confirmed attachment: ${attData.id}`)
 					} catch (error) {
-						$app.logger().error(`Failed to confirm attachment`, 'error', error, 'attachmentId', attachmentId)
+						$app.logger().error(`Failed to confirm attachment`, 'error', error, 'attachmentId', attData.id)
 						throw error // Rollback transaction on failure
 					}
 				}
@@ -119,7 +122,7 @@ onRecordAfterCreateSuccess((e) => {
 
 			// Clear the temporary fields on the pin record to keep the database clean.
 			record.set('attachmentsToCreate', null)
-			record.set('attachmentsToConfirm', [])
+			record.set('attachmentsToConfirm', null)
 			txApp.save(record)
 			$app.logger().debug('Temporary attachment fields cleared for pin', 'pinId', record.id)
 		})
