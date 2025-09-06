@@ -136,6 +136,82 @@ onRecordAfterCreateSuccess((e) => {
 
 }, 'pins')
 
+/**
+ * After a user successfully updates a "pin", we process any new or confirmed attachments.
+ * This logic is similar to the onRecordAfterCreateSuccess hook.
+ */
+onRecordAfterUpdateSuccess((e) => {
+	const record = e.record
+
+	$app.logger().debug('Going to JSON.parse after update success...', 'pinId', record.id, 'e', e)
+	const attachmentsToCreate = JSON.parse(record.get('attachmentsToCreate') || '[]')
+	const attachmentsToConfirm = JSON.parse(record.get('attachmentsToConfirm') || '[]')
+
+	$app.logger().debug('Pin updated successfully. Processing attachments...', 'pinId', record.id, 'e', e)
+
+	const hasAttachmentsToProcess = (attachmentsToCreate && attachmentsToCreate.length > 0) || (attachmentsToConfirm && attachmentsToConfirm.length > 0);
+
+	if (!hasAttachmentsToProcess) {
+		$app.logger().debug('No attachments to process for pin update.', 'pinId', record.id)
+		return; // Nothing to do
+	}
+
+	try {
+		const collection = $app.findCollectionByNameOrId('attachments')
+		// We use runInTransaction to batch process the attachments
+		$app.runInTransaction((txApp) => {
+			// 1. Create new attachments
+			if (attachmentsToCreate && attachmentsToCreate.length > 0) {
+				$app.logger().debug(`Creating ${attachmentsToCreate.length} new attachments...`, 'pinId', record.id)
+				for (const attData of attachmentsToCreate) {
+					try {
+						const attachment = new Record(collection)
+						attachment.set('pin', record.id)
+						attachment.set('type', attData.type)
+						attachment.set('data', attData.data)
+						attachment.set('status', 'confirmed')
+						attachment.set('order', attData.newOrder + 1.0)
+						attachment.set('creator', record.get('creator')) // Ensure creator is set
+						txApp.save(attachment)
+						$app.logger().debug(`Created attachment: ${attachment.id}`)
+					} catch (error) {
+						$app.logger().error(`Failed to create attachment`, 'error', error, 'attachmentData', attData)
+						throw error // Rollback transaction on failure
+					}
+				}
+			}
+
+			// 2. Confirm pre-uploaded attachments
+			if (attachmentsToConfirm && attachmentsToConfirm.length > 0) {
+				$app.logger().debug(`Confirming ${attachmentsToConfirm.length} existing attachments...`, 'pinId', record.id)
+				for (const attData of attachmentsToConfirm) {
+					try {
+						const attachment = txApp.findRecordById('attachments', attData.id)
+						attachment.set('pin', record.id)
+						attachment.set('order', attData.order + 1.0)
+						attachment.set('status', 'confirmed')
+						txApp.save(attachment)
+						$app.logger().debug(`Confirmed attachment: ${attData.id}`)
+					} catch (error) {
+						$app.logger().error(`Failed to confirm attachment`, 'error', error, 'attachmentId', attData.id)
+						throw error // Rollback transaction on failure
+					}
+				}
+			}
+
+			// Clear the temporary fields on the pin record to keep the database clean.
+			record.set('attachmentsToCreate', null)
+			record.set('attachmentsToConfirm', null)
+			txApp.save(record)
+			$app.logger().debug('Temporary attachment fields cleared for pin', 'pinId', record.id)
+		})
+
+		$app.logger().debug('All attachments processed successfully in transaction.', 'pinId', record.id)
+	} catch (error) {
+		$app.logger().error('Error during attachment processing transaction:', 'error', error, 'pinId', record.id)
+	}
+}, 'pins')
+
 
 onRecordUpdateRequest((e) => {
 	const utilsUrls = require(`${__hooks}/utils/urls.js`) // import the utils
