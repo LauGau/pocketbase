@@ -32,6 +32,8 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
 
 
 
+
+
     let currentURL;
     try {
         currentURL = new URL(urlString);
@@ -40,66 +42,132 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
         return e.json(400, { error: 'Invalid URL format provided.', details: error.message });
     }
 
-    try {
-        // 1. Find all pinCollections the user is a member of.
-        const pinCollections = e.app.findRecordsByFilter(
-            "pinCollections", // collection name
-            "members ?~ {:userId}",
-            "-created",
-            0, // no limit
-            0, // no offset
-            { userId: authRecord.id }
-        );
+
+	/**
+	 * ************************************************************************
+	 * STEP 1
+	 * 
+	 * Find all pinCollections the user is a member of.
+	 */
+
+	let pinCollections
+	try {
+		// 1. Find all pinCollections the user is a member of.
+		pinCollections = e.app.findRecordsByFilter(
+			"pinCollections", 									// collection name
+			"members ?~ {:userId} && archivedBy !~ {:userId}", 	// filters
+			"-created",											// sort
+			0, 													// no limit
+			0, 													// no offset
+			{ userId: authRecord.id }
+		);
 		// TODO: add "collection NOT archivedBy... user"
-		
+	
 
 
-        if (pinCollections.length === 0) {
+		console.log("authRecord.id", authRecord.id)
+
+		pinCollections.forEach(pc => {
+			console.log(JSON.stringify(pc.get("name"), null, 2))	// working
+		})
+
+		if (pinCollections.length === 0) {
             $app.logger().debug("User is not a member of any pin collections.", "userId", authRecord.id);
             return e.json(200, []);
         }
+	} catch (err) {
+		
+		console.log("Error on collection search, err:", JSON.stringify(err))
+		return e.json(500, { error: "Error on collection search", details: err.message });
+	}
 
-        const pinCollectionIds = pinCollections.map(pc => pc.id);
+
+
+	/**
+	 * ************************************************************************
+	 * STEP 2
+	 * 
+	 * Build the domain filter
+	 */
+
+	let domainFilter
+	let pinCollectionIds
+	try {
+		pinCollectionIds = pinCollections.map(pc => pc.id);
 		// console.log("pinCollectionIds", JSON.stringify(pinCollectionIds)) // working
-
 
         // 2. Fetch all pins from those collections, not archived by the user.
         // We also do a preliminary filter on domain keys for efficiency.
         const domainKeys = utilsUrls.generateDomainKeys(currentURL.hostname);
         const domainConditions = domainKeys.map(key => `urlMatching.domains ?~ "${key}"`);
         domainConditions.push(`urlMatching.domains ?~ "_WILDCARD_"`);
-        const domainFilter = `(${domainConditions.join(' || ')})`;
+        domainFilter = `(${domainConditions.join(' || ')})`;
 
-        const pins = e.app.findRecordsByFilter(
-		// DOC: https://pocketbase.io/jsvm/functions/_app.findRecordsByFilter.html
-            "pins", // collection name
-            // "pinCollection ?~ {:collections} && archivedBy !~ {:userId} && {:domainFilter}",
-			//"pinCollection ?~ {:collections} && archivedBy !~ {:userId}",
-			null, // TODO: prepare the correct "filter", maybe a recordQuery() is needed
-            "-created",
-            0, // no limit
-            0, // no offset
-            {
-                collections: pinCollectionIds,
-                userId: authRecord.id,
-				domainFilter: domainFilter
-            }
-        );
+		console.log("pinCollectionIds = ", pinCollectionIds)
+		console.log("domainFilter = ", domainFilter)
 
-		// console.log("pins after filter !!!!", JSON.stringify(pins)) // working
+	} catch (err) {
+		console.log("Error while building domain filter, err:", JSON.stringify(err))
+		return e.json(500, { error: "Error while building domain filter", details: err.message });
+	}
 
 
-        if (pins.length === 0) {
-            $app.logger().debug("No potential pins found for user and URL domain.", "userId", authRecord.id, "url", urlString);
-            return e.json(200, []);
-        }
+	/**
+	 * ************************************************************************
+	 * STEP 3 with Custom Query
+	 * 
+	 * Searching the pins...
+	 */
 
-        // 3. Filter pins by full URL match (in-memory).
-        let urlWithSlash = urlString.endsWith('/') ? urlString : urlString + '/';
-        let urlWithoutSlash = urlString.endsWith('/') ? urlString.slice(0, -1) : urlString;
+	let pins
+	try {
+		// Initialize an array to hold the record results.
+		// This is a special construct for the PocketBase JSVM.
+		pins = arrayOf(new Record);
 
-        const matchingPinIds = [];
-        for (const pin of pins) {
+		// --- Custom Query Start ---
+
+		// Start building a query against the "attachments" collection.
+		e.app.recordQuery("pins")
+			.bind({
+				"userId": authRecord.id,
+			})
+			// Add the first condition: WHERE type = 'target'
+			// .andWhere($dbx.hashExp({ 'type': 'target' }))
+
+			// Add the second condition: AND pinCollection IN (...)
+			// We use $dbx.in() and spread the pinCollectionIds array into it.
+			.andWhere($dbx.in('pinCollection', ...pinCollectionIds))
+			
+			// Exclude pins where the authRecord's ID is found inside the 'archivedBy' JSON array.
+	        .andWhere($dbx.not($dbx.like('archivedBy', authRecord.id)))
+			
+			// Set the sorting order: ORDER BY created DESC
+			.orderBy("created DESC")
+			
+			// Execute the query and populate the 'attachments' array with all matching records.
+			.all(pins);
+
+	} catch (err) {
+		console.log("Error while getting the pins, err:", JSON.stringify(err))
+	}
+
+
+	// 3. Filter pins by full URL match (in-memory).
+    let urlWithSlash = urlString.endsWith('/') ? urlString : urlString + '/';
+    let urlWithoutSlash = urlString.endsWith('/') ? urlString.slice(0, -1) : urlString;
+
+	
+	/**
+	 * ************************************************************************
+	 * STEP 4
+	 * 
+	 * Build the domain filter
+	 */
+
+	let matchingPinIds = []
+	try {
+		for (const pin of pins) {
             let urlMatchingData;
             try {
                 urlMatchingData = JSON.parse(pin.get('urlMatching') || '{}');
@@ -134,6 +202,14 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
             return e.json(200, []);
         }
 
+	} catch (err) {
+		console.log("Error while getting the matchingPinIds, err:", JSON.stringify(err))
+	}
+
+
+
+
+    try {
         // // 4. Retrieve all "target" type attachments for the matching pins.
 
 
@@ -154,6 +230,12 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
 			// Add the second condition: AND pin IN (...)
 			// We use $dbx.in() and spread the matchingPinIds array into it.
 			.andWhere($dbx.in('pin', ...matchingPinIds))
+
+
+			 // Ensure the 'data' field is not null before trying to access a nested key.
+    		// .andWhere($dbx.not($dbx.hashExp({ 'data': null }))) // to test !
+			.andWhere($dbx.exp("JSON_EXTRACT(data, '$.url') = {:url}", { url: urlString }))
+
 			
 			// Set the sorting order: ORDER BY created DESC
 			.orderBy("created DESC")
@@ -173,3 +255,14 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
         return e.json(500, { error: "An unexpected error occurred.", details: err.message });
     }
 }, $apis.requireAuth());
+
+
+
+
+/**
+ * ************************************************************************
+ * DEV NOTES
+ * ************************************************************************
+ * 
+ * Excessive try/catch has been made on purpose as it's really hard to debug in JSVM
+ */
