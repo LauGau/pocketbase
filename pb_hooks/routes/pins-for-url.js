@@ -43,8 +43,10 @@ routerAdd('GET', '/api/pins-for-url', (c) => {
     const pinCollectionId = requestData.query['pinCollectionId'];
     const page = parseInt(requestData.query['page']) || 1;
     const perPage = parseInt(requestData.query['perPage']) || 30;
+	const isArchive = requestData.query['isArchive'] ? JSON.parse(requestData.query['isArchive']) : false;
     const sort = requestData.query['sort'] || '-updated';
     const matchScope = requestData.query['matchScope'] || 'domain'; // 'domain' or 'page'
+	const authRecord = c.auth; // from requireAuth middleware
 
     // Due to PocketBase's JSVM environment, all route-specific logic,
     // including helper functions, must be defined inside the handler's scope.
@@ -212,6 +214,15 @@ routerAdd('GET', '/api/pins-for-url', (c) => {
     if (pinCollectionId) {
         filterParts.push(`pinCollection = "${pinCollectionId}"`);
     }
+
+	console.log("filterParts = ", filterParts)
+
+	if (isArchive == true) {
+		console.log("isArchive == true, YaY !!!!")
+		filterParts.push(`archivedBy ?~ "${authRecord.id}"`);
+	} else {
+		filterParts.push(`archivedBy !~ "${authRecord.id}"`);
+	}
 
     const baseFilter = filterParts.join(' && ');
     $app.logger().debug("Using base database filter", "filter", baseFilter);
