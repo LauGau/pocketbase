@@ -292,3 +292,4 @@ onRecordCreateRequest((e) => {
 // --- Load custom routes ---
 // We need to load the route files explicitly from our main hooks file.
 require(`${__hooks}/routes/pins-for-url.js`);
+require(`${__hooks}/routes/targets-for-url.js`);
