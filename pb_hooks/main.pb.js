@@ -1,8 +1,21 @@
 // After a user create a "pinCollection"
-// - We add the user as owner
+// - We add the user as owner to it
 onRecordCreateRequest((e) => {
     const record = e.record;   // The record being created (can be modified directly)
     const authRecord = e.auth; // The authenticated user record
+	const userProfile = e.requestInfo().body.userProfile // we get the custom parametter
+
+
+	// Safety 1. Validate the type
+    if (typeof userProfile !== 'string') {
+        throw new BadRequestError("The 'userProfile' must be a string.");
+    }
+
+    // Safety 2. Validate the length
+    const MAX_LENGTH = 50;
+    if (userProfile.length > MAX_LENGTH) {
+        throw new BadRequestError(`The userProfile cannot exceed ${MAX_LENGTH} characters.`);
+    }
 
     // It's a good practice to ensure a user is authenticated.
     // If no user is authenticated (e.g. an admin creating a record via UI, or an API key request),
@@ -17,9 +30,19 @@ onRecordCreateRequest((e) => {
     record.set("owner", authRecord.id);
 
     // Set the 'members' field directly on the record object.
-    record.set("members", [authRecord.id]);
+    record.set("members", [authRecord.id]); // TODO: delete when collectionMembers table fully implemented
 
-	 e.next()
+
+	e.next() // needed to be able to access the e.record.id bellow
+
+	let collectionMembersTable = $app.findCollectionByNameOrId("collectionMembers")
+	let newCollectionMemberRecord = new Record(collectionMembersTable)
+	newCollectionMemberRecord.set("user", authRecord.id) // e.auth.id doesn't seems available
+	newCollectionMemberRecord.set("pinCollection", e.record.get('id'))
+	newCollectionMemberRecord.set("role", "owner")
+	newCollectionMemberRecord.set("userProfile", userProfile)
+	$app.save(newCollectionMemberRecord)
+
 
 }, "pinCollections")
 
