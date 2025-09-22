@@ -29,9 +29,6 @@ onRecordCreateRequest((e) => {
     // Set the 'owner' field directly on the record object
     record.set("owner", authRecord.id);
 
-    // Set the 'members' field directly on the record object.
-    record.set("members", [authRecord.id]); // TODO: delete when collectionMembers table fully implemented
-
 
 	e.next() // needed to be able to access the e.record.id bellow
 
@@ -40,6 +37,7 @@ onRecordCreateRequest((e) => {
 	newCollectionMemberRecord.set("user", authRecord.id) // e.auth.id doesn't seems available
 	newCollectionMemberRecord.set("pinCollection", e.record.get('id'))
 	newCollectionMemberRecord.set("role", "owner")
+	newCollectionMemberRecord.set("status", "approved")
 	newCollectionMemberRecord.set("userProfile", userProfile)
 	$app.save(newCollectionMemberRecord)
 
@@ -394,3 +392,4 @@ onRecordCreateRequest((e) => {
 // We need to load the route files explicitly from our main hooks file.
 require(`${__hooks}/routes/pins-for-url.js`);
 require(`${__hooks}/routes/targets-for-url.js`);
+require(`${__hooks}/routes/join-collection.js`);
