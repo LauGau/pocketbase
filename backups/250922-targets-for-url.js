@@ -50,28 +50,31 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
 	 * Find all pinCollections the user is a member of.
 	 */
 
-	let pinCollectionIds;
+	let pinCollections
 	try {
-		// 1. Find all collection memberships for the user that are not archived.
-		const memberships = e.app.findRecordsByFilter(
-			"collectionMembers",
-			"user = {:userId} && isCollectionArchived = false",
-			"-created",
-			0, 0,
-			{ "userId": authRecord.id }
+		// 1. Find all pinCollections the user is a member of.
+		pinCollections = e.app.findRecordsByFilter(
+			"pinCollections", 									// collection name
+			"members ?~ {:userId} && archivedBy !~ {:userId}", 	// filters
+			"-created",											// sort
+			0, 													// no limit
+			0, 													// no offset
+			{ userId: authRecord.id }
 		);
+		// TODO: add "collection NOT archivedBy... user"
+	
 
-		if (memberships.length === 0) {
-			$app.logger().debug("User is not a member of any active pin collections.", "userId", authRecord.id);
-			return e.json(200, []);
-		}
 
-		// Extract the pinCollection IDs from the memberships
-		pinCollectionIds = memberships.map(m => m.get("pinCollection"));
-		if (pinCollectionIds.length === 0) {
-			$app.logger().debug("User has memberships but no associated pin collections.", "userId", authRecord.id);
-			return e.json(200, []);
-		}
+		console.log("authRecord.id", authRecord.id)
+
+		pinCollections.forEach(pc => {
+			console.log(JSON.stringify(pc.get("name"), null, 2))	// working
+		})
+
+		if (pinCollections.length === 0) {
+            $app.logger().debug("User is not a member of any pin collections.", "userId", authRecord.id);
+            return e.json(200, []);
+        }
 	} catch (err) {
 		
 		console.log("Error on collection search, err:", JSON.stringify(err))
@@ -87,8 +90,10 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
 	 * Build the domain filter
 	 */
 
-	let domainFilter;
+	let domainFilter
+	let pinCollectionIds
 	try {
+		pinCollectionIds = pinCollections.map(pc => pc.id);
 		// console.log("pinCollectionIds", JSON.stringify(pinCollectionIds)) // working
 
         // 2. Fetch all pins from those collections, not archived by the user.
@@ -97,6 +102,9 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
         const domainConditions = domainKeys.map(key => `urlMatching.domains ?~ "${key}"`);
         domainConditions.push(`urlMatching.domains ?~ "_WILDCARD_"`);
         domainFilter = `(${domainConditions.join(' || ')})`;
+
+		console.log("pinCollectionIds = ", pinCollectionIds)
+		console.log("domainFilter = ", domainFilter)
 
 	} catch (err) {
 		console.log("Error while building domain filter, err:", JSON.stringify(err))
@@ -121,11 +129,16 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
 
 		// Start building a query against the "attachments" collection.
 		e.app.recordQuery("pins")
-			// Filter by the collections the user is an active member of.
+			.bind({
+				"userId": authRecord.id,
+			})
+			// Add the first condition: WHERE type = 'target'
+			// .andWhere($dbx.hashExp({ 'type': 'target' }))
+
+			// Add the second condition: AND pinCollection IN (...)
 			// We use $dbx.in() and spread the pinCollectionIds array into it.
 			.andWhere($dbx.in('pinCollection', ...pinCollectionIds))
 			
-			// Filter out pins that the user has personally archived.
 			// Exclude pins where the authRecord's ID is found inside the 'archivedBy' JSON array.
 	        .andWhere($dbx.not($dbx.like('archivedBy', authRecord.id)))
 			
@@ -180,6 +193,7 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
                 }
             }
         }
+		console.log("matchingPinIds", JSON.stringify(matchingPinIds)) // returns : ["h72wmfttfwuxiq6", "mzjrtt09ayb8wl0", "vd2d8qr3rx8r07q"]
 
 
 
@@ -230,6 +244,8 @@ routerAdd('GET', '/api/targets-for-url', (e) => {
 			.all(attachments);
 
 		// --- Custom Query End ---
+
+		console.log("Attachments from custom query:", JSON.stringify(attachments, null, 2));
 
 		return e.json(200, attachments);
 
