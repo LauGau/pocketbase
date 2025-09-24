@@ -69,6 +69,29 @@ onRecordCreateRequest((e) => {
 
 
 
+//fires only for the "pins" collection
+// Add programatically populate the "number" field of a pin
+onRecordAfterCreateSuccess((e) => {
+    let targetPinCollectionId = e.record.get("pinCollection")
+
+    // try to update with the pinNumberField with a specific count
+    try {
+        const pinsCount = $app.countRecords(
+            "pins",
+            $dbx.hashExp({ "pinCollection": targetPinCollectionId })
+        );
+        e.record.set("number", pinsCount + 1)
+    
+    } catch (err) {
+        console.log("onRecordAfterCreateSuccess failed to add the pin 'number' field", err);
+    }
+
+	e.next()
+
+}, "pins")
+
+
+
 // After a user create successfully a "pin"
 // - We check the attachments and confim them
 onRecordAfterCreateSuccess((e) => {
