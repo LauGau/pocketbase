@@ -135,7 +135,7 @@ onRecordAfterCreateSuccess((e) => {
 						attachment.set('type', attData.type)
 						attachment.set('data', attData.data)
 						attachment.set('status', 'confirmed')
-						attachment.set('order', attData.newOrder + 1.0)
+						attachment.set('order', attData.newOrder) // why are we adding 1.0 ?
 						attachment.set('creator', record.get('creator')) // Ensure creator is set
 						txApp.save(attachment)
 						$app.logger().debug(`Created attachment: ${attachment.id}`)
@@ -153,7 +153,7 @@ onRecordAfterCreateSuccess((e) => {
 					try {
 						const attachment = txApp.findRecordById('attachments', attData.id)
 						attachment.set('pin', record.id)
-						attachment.set('order', attData.order + 1.0)
+						attachment.set('order', attData.order) // why are we adding 1.0 ?
 						attachment.set('status', 'confirmed')
 						txApp.save(attachment)
 						$app.logger().debug(`Confirmed attachment: ${attData.id}`)
@@ -214,7 +214,7 @@ onRecordAfterUpdateSuccess((e) => {
 						attachment.set('type', attData.type)
 						attachment.set('data', attData.data)
 						attachment.set('status', 'confirmed')
-						attachment.set('order', attData.newOrder + 1.0)
+						attachment.set('order', attData.newOrder) // I was uising +1.0 but don't remember why
 						attachment.set('creator', record.get('creator')) // Ensure creator is set
 						txApp.save(attachment)
 						$app.logger().debug(`Created attachment: ${attachment.id}`)
@@ -232,7 +232,7 @@ onRecordAfterUpdateSuccess((e) => {
 					try {
 						const attachment = txApp.findRecordById('attachments', attData.id)
 						attachment.set('pin', record.id)
-						attachment.set('order', attData.order + 1.0)
+						attachment.set('order', attData.order) // I was uising +1.0 but don't remember why
 						attachment.set('status', 'confirmed')
 						txApp.save(attachment)
 						$app.logger().debug(`Confirmed attachment: ${attData.id}`)
