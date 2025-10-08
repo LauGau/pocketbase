@@ -1,0 +1,8 @@
+# Ignore just this one specific file
+pb_hooks/utils/jsondiffpatch.min.js
+
+# Ignore the PocketBase data directory
+pb_data/
+
+# You can also ignore migration files if you don't want to format them
+pb_migrations/
