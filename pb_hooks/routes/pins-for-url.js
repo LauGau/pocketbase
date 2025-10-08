@@ -38,6 +38,8 @@ routerAdd('GET', '/pbk/test', (e) => {
 
 
 routerAdd('GET', '/api/pins-for-url', (c) => {
+	const DEBUG = false;
+
     const requestData = c.requestInfo();
     const urlString = requestData.query['url'];
     const pinCollectionId = requestData.query['pinCollectionId'];
@@ -215,7 +217,7 @@ routerAdd('GET', '/api/pins-for-url', (c) => {
         filterParts.push(`pinCollection = "${pinCollectionId}"`);
     }
 
-	console.log("filterParts = ", filterParts)
+	DEBUG &&console.log("filterParts = ", filterParts)
 
 	if (isArchive == true) {
 		console.log("isArchive == true, YaY !!!!")

@@ -177,8 +177,7 @@ if(DEBUG) {
 
 
 function generateDomainKeys(hostname) {
-
-	console.log("generateDomainKeys called !");
+	DEBUG && console.log("generateDomainKeys called !");
     const keys = new Set();
     const parts = hostname.split('.');
     while (parts.length >= 2) {

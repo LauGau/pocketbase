@@ -1,5 +1,3 @@
-console.log('--- Loading and exporting URL polyfill module ---');
-
 /**
  * A basic WHATWG URL API polyfill for the PocketBase JSVM environment.
  * It is not fully spec-compliant but covers common use cases for parsing
@@ -9,7 +7,8 @@ console.log('--- Loading and exporting URL polyfill module ---');
  * @param {string} [base] Optional base URL. Not implemented in this polyfill.
  */
 const URLPolyfill = function (urlString, base) {
-    console.log("✅ URL polyfill constructor was called!");
+	const DEBUG = false;
+    DEBUG && console.log("✅ URL polyfill constructor was called!");
 
     if (typeof urlString !== 'string') {
         throw new TypeError("Failed to construct 'URL': Invalid URL");
