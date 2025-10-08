@@ -126,11 +126,12 @@ onRecordAfterCreateSuccess((e) => {
 		$app.runInTransaction((txApp) => {
 			// 1. Create new attachments
 			if (attachmentsToCreate && attachmentsToCreate.length > 0) {
-				$app.logger().debug(`Creating ${attachmentsToCreate.length} new attachments...`, 'pinId', record.id)
+				$app.logger().debug(`Creating ${attachmentsToCreate.length} new attachments...`, 'pinId', record.id, 'pinCollection', record.pinCollection)
 				for (const attData of attachmentsToCreate) {
 
 					try {
 						const attachment = new Record(collection)
+						attachment.set('pinCollection', record.get('pinCollection'))
 						attachment.set('pin', record.id)
 						attachment.set('type', attData.type)
 						attachment.set('data', attData.data)
@@ -152,6 +153,7 @@ onRecordAfterCreateSuccess((e) => {
 				for (const attData of attachmentsToConfirm) {
 					try {
 						const attachment = txApp.findRecordById('attachments', attData.id)
+						attachment.set('pinCollection', record.get('pinCollection'))
 						attachment.set('pin', record.id)
 						attachment.set('order', attData.order) // why are we adding 1.0 ?
 						attachment.set('status', 'confirmed')
@@ -184,14 +186,19 @@ onRecordAfterCreateSuccess((e) => {
  * After a user successfully updates a "pin", we process any new or confirmed attachments.
  * This logic is similar to the onRecordAfterCreateSuccess hook.
  */
+
 onRecordAfterUpdateSuccess((e) => {
+	const DEBUG = true
+	const createLog = require(`${__hooks}/utils/create-log.js`);
 	const record = e.record
+
+	console.log("MAIN.PB.JS, onRecordAfterUpdateSuccess() called...");
 
 	$app.logger().debug('Going to JSON.parse after update success...', 'pinId', record.id, 'e', e)
 	const attachmentsToCreate = JSON.parse(record.get('attachmentsToCreate') || '[]')
 	const attachmentsToConfirm = JSON.parse(record.get('attachmentsToConfirm') || '[]')
 
-	$app.logger().debug('Pin updated successfully. Processing attachments...', 'pinId', record.id, 'e', e)
+	$app.logger().debug('Pin updated successfully. Processing attachments...', 'pinId', record.id)
 
 	const hasAttachmentsToProcess = (attachmentsToCreate && attachmentsToCreate.length > 0) || (attachmentsToConfirm && attachmentsToConfirm.length > 0);
 
@@ -201,6 +208,7 @@ onRecordAfterUpdateSuccess((e) => {
 	}
 
 	try {
+		
 		const collection = $app.findCollectionByNameOrId('attachments')
 		// We use runInTransaction to batch process the attachments
 		$app.runInTransaction((txApp) => {
@@ -210,6 +218,7 @@ onRecordAfterUpdateSuccess((e) => {
 				for (const attData of attachmentsToCreate) {
 					try {
 						const attachment = new Record(collection)
+						attachment.set('pinCollection', record.get('pinCollection'))
 						attachment.set('pin', record.id)
 						attachment.set('type', attData.type)
 						attachment.set('data', attData.data)
@@ -231,6 +240,7 @@ onRecordAfterUpdateSuccess((e) => {
 				for (const attData of attachmentsToConfirm) {
 					try {
 						const attachment = txApp.findRecordById('attachments', attData.id)
+						attachment.set('pinCollection', record.get('pinCollection'))
 						attachment.set('pin', record.id)
 						attachment.set('order', attData.order) // I was uising +1.0 but don't remember why
 						attachment.set('status', 'confirmed')
@@ -251,9 +261,11 @@ onRecordAfterUpdateSuccess((e) => {
 		})
 
 		$app.logger().debug('All attachments processed successfully in transaction.', 'pinId', record.id)
+
 	} catch (error) {
 		$app.logger().error('Error during attachment processing transaction:', 'error', error, 'pinId', record.id)
 	}
+
 }, 'pins')
 
 
@@ -410,6 +422,8 @@ onRecordCreateRequest((e) => {
 }, "userProfiles")
 
 
+// --- Load other hooks ---
+require(`${__hooks}/logs.js`);
 
 // --- Load custom routes ---
 // We need to load the route files explicitly from our main hooks file.
