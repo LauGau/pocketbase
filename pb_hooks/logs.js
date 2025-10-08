@@ -94,7 +94,14 @@ onRecordDeleteRequest((e) => {
  */ //////////////////////////////////////////////////
 
 onRecordAfterCreateSuccess((e) => {
+    // only for the richtext
     const DEBUG = true;
+
+    const recordType = e.record.get('type');
+
+    if (recordType !== 'richtext') {
+        return;
+    }
 
     // In PocketBase, require() must be inside the handler to be in scope.
     const createLog = require(`${__hooks}/utils/create-log.js`);
@@ -121,6 +128,7 @@ onRecordAfterCreateSuccess((e) => {
 }, 'attachments');
 
 onRecordUpdateRequest((e) => {
+    // for now the only true "updatable" attahments are the "richtext"
     const DEBUG = true;
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -145,6 +153,43 @@ onRecordUpdateRequest((e) => {
         attachment: e.record.get('id'),
         data: e.record, // The new state of the record
         diff: diff,
+    };
+    DEBUG && console.log('logData to create: ', JSON.stringify(logData));
+
+    createLog($app, logData);
+}, 'attachments');
+
+onRecordAfterUpdateSuccess((e) => {
+    // special treatment for attchments of type "file" and "target"
+    // they are created in DB instantly but we need to wait
+    // the "pins" hook to "confirm" them to mark them as "created"
+    // it's the only moment thos attachment type" are updated
+    // otherwise they are deleted
+    const DEBUG = true;
+
+    const recordType = e.record.get('type');
+
+    if (recordType !== 'file' && recordType !== 'target') {
+        return;
+    }
+
+    // In PocketBase, require() must be inside the handler to be in scope.
+    const createLog = require(`${__hooks}/utils/create-log.js`);
+
+    DEBUG &&
+        console.log(
+            'Attachment: onRecordAfterUpdateSuccess e.record= ',
+            JSON.stringify(e.record)
+        );
+
+    const logData = {
+        type: 'attachment_created',
+        user: e.record.get('creator'),
+        pin: e.record.get('pin'),
+        pinCollection: e.record.get('pinCollection'),
+        attachment: e.record.get('id'),
+        data: e.record, // The new state of the record
+        diff: null, // no need to diff, we consider the attachments "created"
     };
     DEBUG && console.log('logData to create: ', JSON.stringify(logData));
 
