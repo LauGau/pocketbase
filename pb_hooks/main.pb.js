@@ -577,3 +577,4 @@ require(`${__hooks}/logs.js`);
 require(`${__hooks}/routes/pins-for-url.js`);
 require(`${__hooks}/routes/targets-for-url.js`);
 require(`${__hooks}/routes/join-collection.js`);
+require(`${__hooks}/routes/mark-pin-as-read.js`);
