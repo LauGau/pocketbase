@@ -77,6 +77,9 @@ const generateJsonDiff = (originalRecord, updatedRecord) => {
         'collectionId',
         'collectionName',
         'expand',
+        'attachmentsToConfirm',
+        'attachmentsToCreate',
+        'archivedBy',
     ];
 
     // Create cleaned copies of the data
