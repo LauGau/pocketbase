@@ -1,9 +1,10 @@
 /**
  * Marks all unread notifications for a specific pin as read for the authenticated user.
+ * Can be filtered by a notification type prefix.
  *
  * Method: POST
  * Path:   /api/notifications/mark-pin-as-read
- * Body:   { "pinId": "..." }
+ * Body:   { "pinId": "...", "typePrefix": "pin_" | "comment_" }
  */
 routerAdd(
     'POST',
@@ -20,33 +21,43 @@ routerAdd(
             );
         }
 
-        // 3. Parse the pinId from the request body.
+        // 3. Parse the pinId and typePrefix from the request body.
         const body = e.requestInfo().body || {};
         const pinId = body.pinId;
+        const typePrefix = body.typePrefix;
 
         if (!pinId || typeof pinId !== 'string') {
             throw new BadRequestError('The "pinId" field is required.');
         }
 
-        // 4. Find all notifications that match the criteria.
+        if (!typePrefix || typeof typePrefix !== 'string') {
+            throw new BadRequestError('The "typePrefix" field is required.');
+        }
+
+        // 4. Build the filter string to include the type prefix.
+        const filter =
+            'recipient = {:userId} && pin = {:pinId} && isRead = false && type ~ {:typePrefix}';
+
+        // 5. Find all notifications that match the criteria.
         const notificationsToUpdate = $app.findRecordsByFilter(
             'notifications', // collection name
-            'recipient = {:userId} && pin = {:pinId} && isRead = false', // filter
+            filter,
             '-created', // sort order (optional)
             0, // limit (0 for unlimited)
             0, // offset
-            { userId: user.id, pinId: pinId } // filter parameters
+            { userId: user.id, pinId: pinId, typePrefix: `${typePrefix}%` } // filter parameters
         );
 
-        // 5. If there are no notifications to update, we can return early.
+        // 6. If there are no notifications to update, we can return early.
         if (notificationsToUpdate.length === 0) {
             return e.json(200, {
                 success: true,
-                message: 'No unread notifications found for this pin.',
+                message:
+                    'No unread notifications found for this pin with the specified type.',
             });
         }
 
-        // 6. Perform the updates within a database transaction for atomicity.
+        // 7. Perform the updates within a database transaction for atomicity.
         $app.runInTransaction((txApp) => {
             const readAt = new Date().toISOString();
 
@@ -59,7 +70,7 @@ routerAdd(
             }
         });
 
-        // 7. Return a success response.
+        // 8. Return a success response.
         return e.json(200, {
             success: true,
             message: `Marked ${notificationsToUpdate.length} notifications as read.`,
