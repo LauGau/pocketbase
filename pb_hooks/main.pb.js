@@ -98,7 +98,21 @@ onRecordAfterCreateSuccess((e) => {
 // After a user create successfully a "pin"
 // - We check the attachments and confim them
 onRecordAfterCreateSuccess((e) => {
+    const DEBUG = false;
     const record = e.record;
+
+    // first we log the "pin_created"event
+    const createLog = require(`${__hooks}/utils/create-log.js`);
+    const logData = {
+        type: 'pin_created',
+        user: e.record.get('creator'),
+        pin: e.record.get('id'),
+        pinCollection: e.record.get('pinCollection'),
+        data: e.record,
+    };
+    DEBUG && console.log('logData to create: ', JSON.stringify(logData));
+    createLog($app, logData);
+
     // Safely parse attachmentsToCreate, providing a fallback to an empty array string
     // to prevent errors if the field is null.
 

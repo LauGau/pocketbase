@@ -2,27 +2,27 @@
  * PINS
  */ //////////////////////////////////////////////////
 
-onRecordAfterCreateSuccess((e) => {
-    const DEBUG = true;
+// onRecordAfterCreateSuccess((e) => {
+//     const DEBUG = true;
 
-    // In PocketBase, require() must be inside the handler to be in scope.
-    const createLog = require(`${__hooks}/utils/create-log.js`);
+//     // In PocketBase, require() must be inside the handler to be in scope.
+//     const createLog = require(`${__hooks}/utils/create-log.js`);
 
-    e.next();
+//     e.next();
 
-    DEBUG && console.log('e.record= ', JSON.stringify(e.record));
+//     DEBUG && console.log('e.record= ', JSON.stringify(e.record));
 
-    const logData = {
-        type: 'pin_created',
-        user: e.record.get('creator'),
-        pin: e.record.get('id'),
-        pinCollection: e.record.get('pinCollection'),
-        data: e.record,
-    };
-    DEBUG && console.log('logData to create: ', JSON.stringify(logData));
+//     const logData = {
+//         type: 'pin_created',
+//         user: e.record.get('creator'),
+//         pin: e.record.get('id'),
+//         pinCollection: e.record.get('pinCollection'),
+//         data: e.record,
+//     };
+//     DEBUG && console.log('logData to create: ', JSON.stringify(logData));
 
-    createLog($app, logData);
-}, 'pins');
+//     createLog($app, logData);
+// }, 'pins');
 
 onRecordUpdateRequest((e) => {
     const DEBUG = true;
