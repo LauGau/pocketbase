@@ -51,8 +51,18 @@ onRecordUpdateRequest((e) => {
             return; // nothing to log
         }
 
+        let logType = 'pin_updated'; // by default it's just "pin_updated"
+
+        if (diff.isResolved && diff.isResolved[1] === true) {
+            logType = 'pin_closed';
+        } else if (diff.isResolved && diff.isResolved[1] === false) {
+            logType = 'pin_reopened';
+        } else if (diff.priority) {
+            logType = 'pin_priority';
+        }
+
         const logData = {
-            type: 'pin_updated',
+            type: logType,
             user: e.auth.id, // the person who made request
             pinCollection: e.record.get('pinCollection'),
             pin: e.record.get('id'),
