@@ -75,6 +75,73 @@ cronAdd('sendNotificationEmails', '0 * * * *', () => {
             continue; // Should not happen based on the first query, but good for safety
         }
 
+        // Helper function to generate a summary HTML from notifications
+        const generateSummaryHtml = (notifications) => {
+            const summary = {};
+
+            // Group notifications by pinCollection and count types
+            for (const notif of notifications) {
+                const collectionId = notif.get('pinCollection');
+                if (!collectionId) continue;
+
+                if (!summary[collectionId]) {
+                    summary[collectionId] = {
+                        name: 'Unknown Collection', // Default name
+                        counts: {},
+                    };
+                }
+
+                const type = notif.get('type');
+                summary[collectionId].counts[type] =
+                    (summary[collectionId].counts[type] || 0) + 1;
+            }
+
+            // Fetch collection names
+            const collectionIds = Object.keys(summary);
+            if (collectionIds.length > 0) {
+                try {
+                    const collections = $app.findRecordsByIds(
+                        'pinCollections',
+                        collectionIds
+                    );
+                    for (const collection of collections) {
+                        if (summary[collection.id]) {
+                            summary[collection.id].name =
+                                collection.get('name');
+                        }
+                    }
+                } catch (err) {
+                    $app.logger().warn(
+                        'Could not fetch some collection names for email digest.',
+                        'error',
+                        err
+                    );
+                }
+            }
+
+            // Map notification types to human-readable labels
+            const typeLabels = {
+                pin_created: 'New pin',
+                pin_closed: 'Pin closed',
+                pin_reopened: 'Pin re-opened',
+                pin_updated: 'Pin updated',
+                pin_priority: 'Priority changed',
+                comment_created: 'New comment',
+            };
+
+            let html = '';
+            for (const collectionId in summary) {
+                html += `<h3>In ${summary[collectionId].name}:</h3><ul>`;
+                for (const type in summary[collectionId].counts) {
+                    const count = summary[collectionId].counts[type];
+                    const label = typeLabels[type] || type.replace(/_/g, ' ');
+                    html += `<li>${count} ${label}${count > 1 ? 's' : ''}</li>`;
+                }
+                html += `</ul>`;
+            }
+            return html;
+        };
+
         // 5. Send the email digest
         try {
             const message = new MailerMessage({
@@ -85,19 +152,9 @@ cronAdd('sendNotificationEmails', '0 * * * *', () => {
                 to: [{ address: user.email() }],
                 subject: `You have ${allUnreadNotifications.length} unread notifications on Pinback`,
                 html: `
-                    <h1>You've got mail!</h1>
                     <p>Hello ${user.get('name') || 'there'},</p>
                     <p>Here is a summary of your unread notifications:</p>
-                    <ul>
-                        ${allUnreadNotifications
-                            .map(
-                                (n) =>
-                                    `<li>[${n.get(
-                                        'type'
-                                    )}] - A new event happened.</li>`
-                            )
-                            .join('')}
-                    </ul>
+                    ${generateSummaryHtml(allUnreadNotifications)}
                     <p>Visit Pinback to catch up!</p>
                 `,
             });
