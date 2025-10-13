@@ -1,5 +1,5 @@
 const createLog = async ($app, logData) => {
-    const DEBUG = true;
+    const DEBUG = false;
 
     DEBUG && console.log('ℹ️ Log CREATE called...');
     try {

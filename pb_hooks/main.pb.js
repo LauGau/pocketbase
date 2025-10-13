@@ -277,11 +277,11 @@ onRecordAfterCreateSuccess((e) => {
  */
 
 onRecordAfterUpdateSuccess((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     const createLog = require(`${__hooks}/utils/create-log.js`);
     const record = e.record;
 
-    console.log('MAIN.PB.JS, onRecordAfterUpdateSuccess() called...');
+    DEBUG && console.log('MAIN.PB.JS, onRecordAfterUpdateSuccess() called...');
 
     $app.logger().debug(
         'Going to JSON.parse after update success...',

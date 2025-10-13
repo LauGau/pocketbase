@@ -25,7 +25,7 @@
 // }, 'pins');
 
 onRecordUpdateRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordUpdateRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -78,7 +78,7 @@ onRecordUpdateRequest((e) => {
 }, 'pins');
 
 onRecordDeleteRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
 
     // In PocketBase, require() must be inside the handler to be in scope.
     const createLog = require(`${__hooks}/utils/create-log.js`);
@@ -105,7 +105,7 @@ onRecordDeleteRequest((e) => {
 
 onRecordAfterCreateSuccess((e) => {
     // only for the richtext
-    const DEBUG = true;
+    const DEBUG = false;
 
     const recordType = e.record.get('type');
 
@@ -139,7 +139,7 @@ onRecordAfterCreateSuccess((e) => {
 
 onRecordUpdateRequest((e) => {
     // for now the only true "updatable" attahments are the "richtext"
-    const DEBUG = true;
+    const DEBUG = false;
 
     // In PocketBase, require() must be inside the handler to be in scope.
     const createLog = require(`${__hooks}/utils/create-log.js`);
@@ -207,7 +207,7 @@ onRecordAfterUpdateSuccess((e) => {
 }, 'attachments');
 
 onRecordDeleteRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordDeleteRequest called for attachment');
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -233,7 +233,7 @@ onRecordDeleteRequest((e) => {
  */ //////////////////////////////////////////////////
 
 onRecordCreateRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordDeleteRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -306,7 +306,7 @@ onRecordDeleteRequest((e) => {
  */ //////////////////////////////////////////////////
 
 onRecordCreateRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordDeleteRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -329,7 +329,7 @@ onRecordCreateRequest((e) => {
 }, 'comments');
 
 onRecordUpdateRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordUpdateRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -355,7 +355,7 @@ onRecordUpdateRequest((e) => {
 }, 'comments');
 
 onRecordDeleteRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordDeleteRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
