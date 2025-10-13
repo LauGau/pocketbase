@@ -3,7 +3,7 @@ onRecordAfterCreateSuccess((e) => {
     const logRecord = e.record;
 
     // 1. Get the log type and related info from the log record
-    const logType = logRecord.get('type');
+    let logType = logRecord.get('type');
     const actorId = logRecord.get('user');
     const pinCollectionId = logRecord.get('pinCollection');
     const pinId = logRecord.get('pin');
@@ -64,6 +64,17 @@ onRecordAfterCreateSuccess((e) => {
                 'notifications.js: No recipients after filtering out the actor.'
             );
         return;
+    }
+
+    // LogType override
+    // for now we will treat the "attachments" related events
+    // like "pin_updated" for the notifications
+    if (
+        logType == 'attachment_created' ||
+        logType == 'attachment_deleted' ||
+        logType == 'attachment_updated'
+    ) {
+        logType = 'pin_updated';
     }
 
     // 4. Create the notifications in a batch transaction
