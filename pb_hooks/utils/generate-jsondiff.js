@@ -6,7 +6,7 @@
  * @returns {object|null} A diff object, or null if there are no differences.
  */
 const generateJsonDiff = (originalRecord, updatedRecord) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('generateJsonDiff called...');
 
     // The library attaches itself to the global scope.
