@@ -8,10 +8,15 @@
  * 2. Sets the `size` field on the new attachment record.
  * 3. Fetches the related workspace to check the storage limit.
  * 4. Throws an error if the new attachment would exceed the workspace's storage limit.
+ *
+ * TODO: find a way to fix the edge case where a user can use more data at then its limit
+ * Ex: if the users has still X MB available, he can create or edit a note and upload
+ * Any amount of files, as long as each file is less than the X MB available...
+ * Maybe we should count the "pending" attachments in the storage..
  */
 
 onRecordCreateRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     const attachment = e.record;
     let attachmentSize = 0;
 
@@ -52,6 +57,9 @@ onRecordCreateRequest((e) => {
 
             const storageLimit = workspace.getInt('storage_limit');
             const currentUsage = workspace.getInt('storage_used');
+
+            DEBUG && console.log('storageLimit =', storageLimit);
+            DEBUG && console.log('currentUsage =', currentUsage);
 
             if (
                 storageLimit > 0 &&
