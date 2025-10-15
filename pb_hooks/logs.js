@@ -175,7 +175,7 @@ onRecordAfterUpdateSuccess((e) => {
     // the "pins" hook to "confirm" them to mark them as "created"
     // it's the only moment thos attachment type" are updated
     // otherwise they are deleted
-    const DEBUG = true;
+    const DEBUG = false;
 
     const recordType = e.record.get('type');
 
@@ -255,7 +255,7 @@ onRecordCreateRequest((e) => {
 }, 'pinCollections');
 
 onRecordUpdateRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordUpdateRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
@@ -280,7 +280,7 @@ onRecordUpdateRequest((e) => {
 }, 'pinCollections');
 
 onRecordDeleteRequest((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     DEBUG && console.log('onRecordDeleteRequest called for pinCollections');
 
     // In PocketBase, require() must be inside the handler to be in scope.
