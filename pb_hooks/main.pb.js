@@ -616,6 +616,7 @@ require(`${__hooks}/logs.js`);
 require(`${__hooks}/notifications.js`);
 require(`${__hooks}/crons/notifications-email.js`);
 require(`${__hooks}/attachments.js`);
+require(`${__hooks}/users.js`);
 
 // --- Load custom routes ---
 // We need to load the route files explicitly from our main hooks file.
