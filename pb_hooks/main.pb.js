@@ -73,32 +73,10 @@ onRecordCreateRequest(
     'comments'
 );
 
-//fires only for the "pins" collection
-// Add programatically populate the "number" field of a pin
-onRecordAfterCreateSuccess((e) => {
-    let targetPinCollectionId = e.record.get('pinCollection');
-
-    // try to update with the pinNumberField with a specific count
-    try {
-        const pinsCount = $app.countRecords(
-            'pins',
-            $dbx.hashExp({ pinCollection: targetPinCollectionId })
-        );
-        e.record.set('number', pinsCount + 1);
-    } catch (err) {
-        console.log(
-            "onRecordAfterCreateSuccess failed to add the pin 'number' field",
-            err
-        );
-    }
-
-    e.next();
-}, 'pins');
-
 // After a user create successfully a "pin"
 // - We check the attachments and confim them
 onRecordAfterCreateSuccess((e) => {
-    const DEBUG = false;
+    const DEBUG = true;
     const record = e.record;
 
     // first we log the "pin_created"event
@@ -178,6 +156,17 @@ onRecordAfterCreateSuccess((e) => {
                 for (const attData of attachmentsToCreate) {
                     try {
                         const attachment = new Record(collection);
+
+                        // This is NOT working in JSVM as TextEncoder is not available...
+                        // const attachmentSize = new TextEncoder().encode(
+                        //     JSON.stringify(attData.data)
+                        // ).length;
+
+                        // ... so we neeed to do this instead
+                        const attachmentSize = unescape(
+                            encodeURIComponent(JSON.stringify(attData.data))
+                        ).length;
+
                         attachment.set(
                             'pinCollection',
                             record.get('pinCollection')
@@ -185,6 +174,7 @@ onRecordAfterCreateSuccess((e) => {
                         attachment.set('pin', record.id);
                         attachment.set('type', attData.type);
                         attachment.set('data', attData.data);
+                        attachment.set('size', attachmentSize);
                         attachment.set('status', 'confirmed');
                         attachment.set('order', attData.newOrder); // why are we adding 1.0 ?
                         attachment.set('creator', record.get('creator')); // Ensure creator is set
@@ -225,6 +215,7 @@ onRecordAfterCreateSuccess((e) => {
                         attachment.set('pin', record.id);
                         attachment.set('order', attData.order); // why are we adding 1.0 ?
                         attachment.set('status', 'confirmed');
+
                         txApp.save(attachment);
                         $app.logger().debug(
                             `Confirmed attachment: ${attData.id}`
@@ -269,6 +260,28 @@ onRecordAfterCreateSuccess((e) => {
     } finally {
         e.next();
     }
+}, 'pins');
+
+//fires only for the "pins" collection
+// Add programatically populate the "number" field of a pin
+onRecordAfterCreateSuccess((e) => {
+    let targetPinCollectionId = e.record.get('pinCollection');
+
+    // try to update with the pinNumberField with a specific count
+    try {
+        const pinsCount = $app.countRecords(
+            'pins',
+            $dbx.hashExp({ pinCollection: targetPinCollectionId })
+        );
+        e.record.set('number', pinsCount + 1);
+    } catch (err) {
+        console.log(
+            "onRecordAfterCreateSuccess failed to add the pin 'number' field",
+            err
+        );
+    }
+
+    e.next();
 }, 'pins');
 
 /**
@@ -330,13 +343,25 @@ onRecordAfterUpdateSuccess((e) => {
                 for (const attData of attachmentsToCreate) {
                     try {
                         const attachment = new Record(collection);
+
+                        // This is NOT working in JSVM as TextEncoder is not available...
+                        // const attachmentSize = new TextEncoder().encode(
+                        //     JSON.stringify(attData.data)
+                        // ).length;
+
+                        // ... so we neeed to do this instead
+                        const attachmentSize = unescape(
+                            encodeURIComponent(JSON.stringify(attData.data))
+                        ).length;
+
                         attachment.set(
                             'pinCollection',
                             record.get('pinCollection')
                         );
                         attachment.set('pin', record.id);
-                        attachment.set('type', attData.type);
+                        attachment.set('type', attData.type); //only for attRichText for now
                         attachment.set('data', attData.data);
+                        attachment.set('size', attachmentSize);
                         attachment.set('status', 'confirmed');
                         attachment.set('order', attData.newOrder); // I was uising +1.0 but don't remember why
                         attachment.set('creator', record.get('creator')); // Ensure creator is set
@@ -573,6 +598,7 @@ onRecordCreateRequest((e) => {
 require(`${__hooks}/logs.js`);
 require(`${__hooks}/notifications.js`);
 require(`${__hooks}/crons/notifications-email.js`);
+require(`${__hooks}/attachments.js`);
 
 // --- Load custom routes ---
 // We need to load the route files explicitly from our main hooks file.
