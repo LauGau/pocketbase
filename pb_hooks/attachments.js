@@ -82,6 +82,7 @@ onRecordCreateRequest((e) => {
  */
 onRecordAfterCreateSuccess((e) => {
     const DEBUG = true;
+    const updateStorageUsage = require(`${__hooks}/utils/update-storage-usage.js`);
     const attachment = e.record;
     const attachmentSize = attachment.getInt('size');
 
@@ -89,34 +90,8 @@ onRecordAfterCreateSuccess((e) => {
 
     if (attachmentSize > 0) {
         try {
-            // The pinCollection should be available now, as this hook runs after successful creation
-            // where the main.pb.js logic would have set it.
             const pinCollectionId = attachment.getString('pinCollection');
-            if (!pinCollectionId) return; // Should not happen, but as a safeguard.
-
-            const pinCollection = $app.findRecordById(
-                'pinCollections',
-                pinCollectionId
-            );
-
-            // Update pinCollection storage
-            $app.db()
-                .newQuery(
-                    'UPDATE pinCollections SET storage_used = storage_used + {:size} WHERE id = {:id}'
-                )
-                .bind({ size: attachmentSize, id: pinCollection.id })
-                .execute();
-
-            // Update workspace storage
-            $app.db()
-                .newQuery(
-                    'UPDATE workspaces SET storage_used = storage_used + {:size} WHERE id = {:id}'
-                )
-                .bind({
-                    size: attachmentSize,
-                    id: pinCollection.getString('workspace'),
-                })
-                .execute();
+            updateStorageUsage($app, attachmentSize, pinCollectionId);
         } catch (err) {
             $app.logger().error(
                 'Failed to update storage counters on attachment create.',
@@ -144,6 +119,7 @@ onRecordAfterCreateSuccess((e) => {
  */
 onRecordUpdateRequest((e) => {
     const DEBUG = true;
+    const updateStorageUsage = require(`${__hooks}/utils/update-storage-usage.js`);
     const attachment = e.record;
 
     DEBUG && console.log('onRecordUpdateRequest attachment =', attachment);
@@ -199,19 +175,7 @@ onRecordUpdateRequest((e) => {
             e.next();
 
             // 2. Update Counters (only runs if e.next() was successful)
-            const workspaceId = pinCollection.getString('workspace');
-            $app.db()
-                .newQuery(
-                    'UPDATE pinCollections SET storage_used = storage_used + {:diff} WHERE id = {:id}'
-                )
-                .bind({ diff: sizeDiff, id: pinCollectionId })
-                .execute();
-            $app.db()
-                .newQuery(
-                    'UPDATE workspaces SET storage_used = storage_used + {:diff} WHERE id = {:id}'
-                )
-                .bind({ diff: sizeDiff, id: workspaceId })
-                .execute();
+            updateStorageUsage($app, sizeDiff, pinCollectionId);
         } else {
             // Should not happen for an existing attachment, but as a safeguard.
             e.next();
@@ -235,6 +199,7 @@ onRecordUpdateRequest((e) => {
  * `storage_used` counters on the parent pinCollection and workspace.
  */
 onRecordAfterDeleteSuccess((e) => {
+    const updateStorageUsage = require(`${__hooks}/utils/update-storage-usage.js`);
     const attachment = e.record;
     const attachmentSize = attachment.getInt('size');
 
@@ -247,24 +212,7 @@ onRecordAfterDeleteSuccess((e) => {
                 { id: attachment.get('pinCollection') }
             );
             if (pinCollection) {
-                // Update pinCollection storage
-                $app.db()
-                    .newQuery(
-                        'UPDATE pinCollections SET storage_used = storage_used - {:size} WHERE id = {:id}'
-                    )
-                    .bind({ size: attachmentSize, id: pinCollection.id })
-                    .execute();
-
-                // Update workspace storage
-                $app.db()
-                    .newQuery(
-                        'UPDATE workspaces SET storage_used = storage_used - {:size} WHERE id = {:id}'
-                    )
-                    .bind({
-                        size: attachmentSize,
-                        id: pinCollection.getString('workspace'),
-                    })
-                    .execute();
+                updateStorageUsage($app, -attachmentSize, pinCollection.id);
             }
         } catch (err) {
             $app.logger().error(

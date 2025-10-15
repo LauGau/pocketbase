@@ -76,8 +76,9 @@ onRecordCreateRequest(
 // After a user create successfully a "pin"
 // - We check the attachments and confim them
 onRecordAfterCreateSuccess((e) => {
-    const DEBUG = true;
+    const DEBUG = false;
     const record = e.record;
+    const updateStorageUsage = require(`${__hooks}/utils/update-storage-usage.js`);
 
     // first we log the "pin_created"event
     const createLog = require(`${__hooks}/utils/create-log.js`);
@@ -217,6 +218,16 @@ onRecordAfterCreateSuccess((e) => {
                         attachment.set('status', 'confirmed');
 
                         txApp.save(attachment);
+
+                        // Manually trigger storage update for confirmed files,
+                        // as txApp.save() does not trigger other hooks.
+                        const attachmentSize = attachment.getInt('size');
+                        updateStorageUsage(
+                            txApp,
+                            attachmentSize,
+                            record.get('pinCollection')
+                        );
+
                         $app.logger().debug(
                             `Confirmed attachment: ${attData.id}`
                         );
@@ -292,6 +303,7 @@ onRecordAfterCreateSuccess((e) => {
 onRecordAfterUpdateSuccess((e) => {
     const DEBUG = false;
     const createLog = require(`${__hooks}/utils/create-log.js`);
+    const updateStorageUsage = require(`${__hooks}/utils/update-storage-usage.js`);
     const record = e.record;
 
     DEBUG && console.log('MAIN.PB.JS, onRecordAfterUpdateSuccess() called...');
@@ -402,6 +414,16 @@ onRecordAfterUpdateSuccess((e) => {
                         attachment.set('pin', record.id);
                         attachment.set('order', attData.order); // I was uising +1.0 but don't remember why
                         attachment.set('status', 'confirmed');
+
+                        // Manually trigger storage update for confirmed files,
+                        // as txApp.save() does not trigger other hooks.
+                        const attachmentSize = attachment.getInt('size');
+                        updateStorageUsage(
+                            txApp,
+                            attachmentSize,
+                            record.get('pinCollection')
+                        );
+
                         txApp.save(attachment);
                         $app.logger().debug(
                             `Confirmed attachment: ${attData.id}`
