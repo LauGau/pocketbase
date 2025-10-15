@@ -80,6 +80,23 @@ onRecordAfterCreateSuccess((e) => {
     const record = e.record;
     const updateStorageUsage = require(`${__hooks}/utils/update-storage-usage.js`);
 
+    // Add programatically populate the "number" field of a pin
+    let targetPinCollectionId = e.record.get('pinCollection');
+
+    // try to update with the pinNumberField with a specific count
+    try {
+        const pinsCount = $app.countRecords(
+            'pins',
+            $dbx.hashExp({ pinCollection: targetPinCollectionId })
+        );
+        e.record.set('number', pinsCount + 1);
+    } catch (err) {
+        console.log(
+            "onRecordAfterCreateSuccess failed to add the pin 'number' field",
+            err
+        );
+    }
+
     // first we log the "pin_created"event
     const createLog = require(`${__hooks}/utils/create-log.js`);
     const logData = {
@@ -271,28 +288,6 @@ onRecordAfterCreateSuccess((e) => {
     } finally {
         e.next();
     }
-}, 'pins');
-
-//fires only for the "pins" collection
-// Add programatically populate the "number" field of a pin
-onRecordAfterCreateSuccess((e) => {
-    let targetPinCollectionId = e.record.get('pinCollection');
-
-    // try to update with the pinNumberField with a specific count
-    try {
-        const pinsCount = $app.countRecords(
-            'pins',
-            $dbx.hashExp({ pinCollection: targetPinCollectionId })
-        );
-        e.record.set('number', pinsCount + 1);
-    } catch (err) {
-        console.log(
-            "onRecordAfterCreateSuccess failed to add the pin 'number' field",
-            err
-        );
-    }
-
-    e.next();
 }, 'pins');
 
 /**
