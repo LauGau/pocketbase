@@ -1,50 +1,3 @@
-// After a user create a "pinCollection"
-// - We add the user as owner to it
-onRecordCreateRequest((e) => {
-    const record = e.record; // The record being created (can be modified directly)
-    const authRecord = e.auth; // The authenticated user record
-    const userProfile = e.requestInfo().body.userProfile; // we get the custom parametter
-
-    // Safety 1. Validate the type
-    if (typeof userProfile !== 'string') {
-        throw new BadRequestError("The 'userProfile' must be a string.");
-    }
-
-    // Safety 2. Validate the length
-    const MAX_LENGTH = 50;
-    if (userProfile.length > MAX_LENGTH) {
-        throw new BadRequestError(
-            `The userProfile cannot exceed ${MAX_LENGTH} characters.`
-        );
-    }
-
-    // It's a good practice to ensure a user is authenticated.
-    // If no user is authenticated (e.g. an admin creating a record via UI, or an API key request),
-    // authRecord will be null.
-    if (!authRecord) {
-        // If a user MUST be authenticated to create this record, throw an error.
-        // This will prevent the record from being created and return a 400 response.
-        throw new BadRequestError(
-            'You must be logged in to create a pin collection.'
-        );
-    }
-
-    // Set the 'owner' field directly on the record object
-    record.set('owner', authRecord.id);
-
-    e.next(); // needed to be able to access the e.record.id bellow
-
-    let collectionMembersTable =
-        $app.findCollectionByNameOrId('collectionMembers');
-    let newCollectionMemberRecord = new Record(collectionMembersTable);
-    newCollectionMemberRecord.set('user', authRecord.id); // e.auth.id doesn't seems available
-    newCollectionMemberRecord.set('pinCollection', e.record.get('id'));
-    newCollectionMemberRecord.set('role', 'owner');
-    newCollectionMemberRecord.set('status', 'approved');
-    newCollectionMemberRecord.set('userProfile', userProfile);
-    $app.save(newCollectionMemberRecord);
-}, 'pinCollections');
-
 // After a user create a "pin", an "attachement" or a "comment"
 // - We add the user as the creator
 onRecordCreateRequest(
@@ -612,11 +565,14 @@ onRecordCreateRequest((e) => {
 }, 'userProfiles');
 
 // --- Load other hooks ---
+require(`${__hooks}/pinCollections.js`);
 require(`${__hooks}/logs.js`);
 require(`${__hooks}/notifications.js`);
-require(`${__hooks}/crons/notifications-email.js`);
 require(`${__hooks}/attachments.js`);
 require(`${__hooks}/users.js`);
+
+// --- Crons ---
+require(`${__hooks}/crons/notifications-email.js`);
 
 // --- Load custom routes ---
 // We need to load the route files explicitly from our main hooks file.
