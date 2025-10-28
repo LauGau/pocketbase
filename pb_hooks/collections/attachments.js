@@ -28,9 +28,18 @@ onRecordCreateRequest((e) => {
         if (file && file.size) {
             attachmentSize = file.size;
         } else {
+            // if it's a "richtext"...
             const content = attachment.getString('data');
-            DEBUG && console.log('measuring size of content =', content);
-            attachmentSize = new TextEncoder().encode(content).length;
+            DEBUG &&
+                console.log(
+                    'measuring size of content (using encodeURIComponent) =',
+                    content
+                );
+            // This is the ideal way to measure the size of a string but TextEncoder()
+            // is not availble inside JSVM...
+            // attachmentSize = new TextEncoder().encode(content).length;
+            // So we needto do this instead:
+            attachmentSize = unescape(encodeURIComponent(content)).length;
             DEBUG && console.log('attachmentSize = ', attachmentSize);
         }
         attachment.set('size', attachmentSize);
