@@ -46,6 +46,73 @@ onRecordCreateRequest((e) => {
 }, 'pinCollections');
 
 /**
+ * After a new 'pinCollection' is CREATED,
+ * find its workspace and increment the collections_count.
+ */
+onRecordAfterCreateSuccess((e) => {
+    const newPinCollection = e.record;
+    const workspaceId = newPinCollection.get('workspace'); // Get ID from the relation field
+
+    if (!workspaceId) {
+        e.next();
+        return; // No workspace linked, do nothing
+    }
+    try {
+        // Atomically increment the collections_count on the parent workspace.
+        // This uses a direct SQL query to avoid triggering the workspace's afterUpdate hook.
+        $app.db()
+            .newQuery(
+                'UPDATE workspaces SET collections_count = collections_count + 1 WHERE id = {:workspaceId}'
+            )
+            .bind({ workspaceId: workspaceId })
+            .execute();
+    } catch (err) {
+        console.log(
+            `[pinCollection Create]: Error updating collections_count count for workspace ${workspaceId}:`,
+            err
+        );
+        // Don't throw here, or it might roll back the create operation
+    }
+    e.next();
+}, 'pinCollections'); // Only run for the 'pinCollections' collection
+
+/**
+ * After a new 'pinCollection' is DELETED,
+ * find its workspace and decrement the collections_count.
+ */
+onRecordAfterDeleteSuccess((e) => {
+    const deletedCollection = e.record;
+    const workspaceId = deletedCollection.get('workspace');
+
+    if (!workspaceId) {
+        e.next();
+        return; // No workspace linked, do nothing
+    }
+
+    try {
+        // Atomically decrement the collections_count on the parent workspace.
+        $app.db()
+            .newQuery(
+                'UPDATE workspaces SET collections_count = MAX(0, collections_count - 1) WHERE id = {:workspaceId}'
+            )
+            .bind({ workspaceId: workspaceId })
+            .execute();
+
+        // After a collection is deleted, its storage is gone, so we must recalculate the total.
+        const recalculateWorkspaceStorage = require(`${__hooks}/utils/recalculate-workspace-storage.js`);
+        recalculateWorkspaceStorage($app, workspaceId);
+    } catch (err) {
+        $app.logger().error(
+            `[pinCollection Delete]: Error updating counters for workspace ${workspaceId}:`,
+            'pinCollectionId',
+            deletedCollection.id,
+            err
+        );
+    }
+    e.next();
+}, 'pinCollections'); // Only run for the 'pinCollections' collection
+
+/**
  * Before a "pinCollection" is updated, this hook checks for workspace changes.
  *
  * If the `workspace` field has changed, it:
