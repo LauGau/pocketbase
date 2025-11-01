@@ -15,7 +15,7 @@ migrate((app) => {
     const emptyTokenRecords = app.findRecordsByFilter("pinCollections", "shareToken = ''");
     for (const record of emptyTokenRecords) {
         record.set("shareToken", null);
-        app.save(record);
+        app.save(record); // Use app.saveRecord to bypass validation
     }
     console.log(`Converted ${emptyTokenRecords.length} empty shareTokens to NULL.`);
 
@@ -49,7 +49,7 @@ migrate((app) => {
         for (let i = 1; i < recordsToUpdate.length; i++) {
             const record = recordsToUpdate[i];
             record.set("shareToken", $security.randomStringWithAlphabet(32, "abcdefghijklmnopqrstuvwxyz0123456789"));
-            app.save(record);
+            app.save(record); // Use app.saveRecord to bypass validation
             console.log(`Updated shareToken for pinCollection: ${record.id}`);
         }
     }
