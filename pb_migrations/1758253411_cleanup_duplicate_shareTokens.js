@@ -9,16 +9,14 @@
  * 2. For each group of duplicates, it keeps the token for the oldest record.
  * 3. For all other records in the group, it generates a new, random `shareToken`.
  */
-migrate((db) => {
-    const dao = new Dao(db);
-
+migrate((app) => {
     // Find shareTokens that are used by more than one pinCollection
     const duplicateTokens = arrayOf(new DynamicModel({
         shareToken: "",
         count: 0,
     }));
 
-    dao.db()
+    app.db()
         .newQuery("SELECT shareToken, COUNT(*) as count FROM pinCollections WHERE shareToken IS NOT NULL AND shareToken != '' GROUP BY shareToken HAVING COUNT(*) > 1")
         .all(duplicateTokens);
 
@@ -30,7 +28,7 @@ migrate((db) => {
     console.log(`Found ${duplicateTokens.length} shareToken(s) with duplicates. Fixing...`);
 
     for (const item of duplicateTokens) {
-        const recordsToUpdate = dao.findRecordsByFilter(
+        const recordsToUpdate = app.dao().findRecordsByFilter(
             "pinCollections",
             "shareToken = {:token}",
             "+created", // Keep the token for the oldest record
@@ -42,11 +40,11 @@ migrate((db) => {
         for (let i = 1; i < recordsToUpdate.length; i++) {
             const record = recordsToUpdate[i];
             record.set("shareToken", $security.randomStringWithAlphabet(32, "abcdefghijklmnopqrstuvwxyz0123456789"));
-            dao.saveRecord(record);
+            app.dao().saveRecord(record);
             console.log(`Updated shareToken for pinCollection: ${record.id}`);
         }
     }
-}, (db) => {
+}, (app) => {
     // This migration is for data cleanup and doesn't have a rollback (down) action.
     // The changes are permanent to ensure data integrity.
     console.log("Skipping down migration for 1758253411_cleanup_duplicate_shareTokens.js");
