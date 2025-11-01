@@ -28,7 +28,7 @@ migrate((app) => {
     console.log(`Found ${duplicateTokens.length} shareToken(s) with duplicates. Fixing...`);
 
     for (const item of duplicateTokens) {
-        const recordsToUpdate = app.dao().findRecordsByFilter(
+        const recordsToUpdate = app.findRecordsByFilter(
             "pinCollections",
             "shareToken = {:token}",
             "+created", // Keep the token for the oldest record
@@ -40,7 +40,7 @@ migrate((app) => {
         for (let i = 1; i < recordsToUpdate.length; i++) {
             const record = recordsToUpdate[i];
             record.set("shareToken", $security.randomStringWithAlphabet(32, "abcdefghijklmnopqrstuvwxyz0123456789"));
-            app.dao().saveRecord(record);
+            app.saveRecord(record);
             console.log(`Updated shareToken for pinCollection: ${record.id}`);
         }
     }
