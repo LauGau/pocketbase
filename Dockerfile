@@ -22,3 +22,6 @@ WORKDIR /pb
 COPY ./pb_migrations /pb/pb_migrations
 
 EXPOSE 8080
+
+# Start PocketBase
+CMD ["/pb/pocketbase", "serve", "--http=0.0.0.0:8080"]
