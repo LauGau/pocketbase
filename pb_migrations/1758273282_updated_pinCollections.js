@@ -4,7 +4,7 @@ migrate((app) => {
 
   // update field
   collection.fields.addAt(6, new Field({
-    "autogeneratePattern": "[a-z0-9]{40}",
+    "autogeneratePattern": "",
     "hidden": false,
     "id": "text2115302333",
     "max": 0,
@@ -24,7 +24,7 @@ migrate((app) => {
 
   // update field
   collection.fields.addAt(6, new Field({
-    "autogeneratePattern": " [a-z0-9]{40}",
+    "autogeneratePattern": "",
     "hidden": false,
     "id": "text2115302333",
     "max": 0,

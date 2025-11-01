@@ -10,6 +10,15 @@
  * 3. For all other records in the group, it generates a new, random `shareToken`.
  */
 migrate((app) => {
+    // --- FIX: Convert all empty string shareTokens to NULL ---
+    // This is the primary fix, as UNIQUE constraints fail on multiple empty strings.
+    const emptyTokenRecords = app.findRecordsByFilter("pinCollections", "shareToken = ''");
+    for (const record of emptyTokenRecords) {
+        record.set("shareToken", null);
+        app.save(record);
+    }
+    console.log(`Converted ${emptyTokenRecords.length} empty shareTokens to NULL.`);
+
     // Find shareTokens that are used by more than one pinCollection
     const duplicateTokens = arrayOf(new DynamicModel({
         shareToken: "",
@@ -40,7 +49,7 @@ migrate((app) => {
         for (let i = 1; i < recordsToUpdate.length; i++) {
             const record = recordsToUpdate[i];
             record.set("shareToken", $security.randomStringWithAlphabet(32, "abcdefghijklmnopqrstuvwxyz0123456789"));
-            app.saveRecord(record);
+            app.save(record);
             console.log(`Updated shareToken for pinCollection: ${record.id}`);
         }
     }
