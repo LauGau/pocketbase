@@ -8,3 +8,6 @@ docker-compose.yml
 .vscode/
 .idea/
 .DS_Store
+
+# secrets
+secrets.json
