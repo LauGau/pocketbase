@@ -1,10 +1,12 @@
 // After a user creates a "userProfile"...
 // - IF the user doesn't have any userProfile marked as "default" -> Set new userProfile as "Default"
 onRecordCreateRequest((e) => {
-    let existinDefaultUserProfilerecord = null;
+    const DEBUG = false;
+    let existingDefaultUserProfilerecord = null;
 
     try {
         // we try to get 1 userProfile marked as "default" for the user
+        // we use "findRecordsByFilter" instead of "findFirstRecordByFilter"
         existinDefaultUserProfilerecord = $app.findFirstRecordByFilter(
             'userProfiles',
             'user = {:userId} && isDefault = true ',
@@ -14,9 +16,15 @@ onRecordCreateRequest((e) => {
         // findFirstRecordByFilter() returns an error if it cannot find anything, so we need to catch it
         // DOC: https://pocketbase.io/docs/js-records/#fetch-single-record
         // but in this case, it's ok to fail silently
+        existingDefaultUserProfilerecord = false;
+        DEBUG &&
+            console.log(
+                'userProfiles hook: error inside onRecordCreateRequest(): ',
+                err
+            );
     }
 
-    if (!existinDefaultUserProfilerecord) {
+    if (!existingDefaultUserProfilerecord) {
         // If there is no userProfile as "default"...
         // mark the new userProfile as "Default"
         e.record.set('isDefault', true);
