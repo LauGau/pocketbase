@@ -1,7 +1,7 @@
 // Intercept all PocketBase emails and send via HTTP API
 onMailerSend((e) => {
     const DEBUG = true;
-    const secrets = require(`${__hooks}/secrets.json`);
+    // const secrets = require(`${__hooks}/secrets.json`);
     DEBUG && console.log('📧 Intercepting email for HTTP delivery');
 
     const POSTMARK_SERVER_TOKEN = $os.getenv('POSTMARK_SERVER_TOKEN');
