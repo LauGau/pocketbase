@@ -11,3 +11,4 @@ docker-compose.yml
 
 # secrets
 secrets.json
+.env
