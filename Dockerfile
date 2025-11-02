@@ -21,6 +21,9 @@ WORKDIR /pb
 # Copy only the migrations. The hooks will be mounted as a volume.
 COPY ./pb_migrations /pb/pb_migrations
 
+# Copy the hooks directory
+COPY ./pb_hooks /pb/pb_hooks
+
 EXPOSE 8080
 
 # Start PocketBase
