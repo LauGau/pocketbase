@@ -4,8 +4,7 @@ onMailerSend((e) => {
     const secrets = require(`${__hooks}/secrets.json`);
     DEBUG && console.log('📧 Intercepting email for HTTP delivery');
 
-    const POSTMARK_SERVER_TOKEN =
-        $os.getenv('POSTMARK_SERVER_TOKEN') || secrets.POSTMARK_SERVER_TOKEN;
+    const POSTMARK_SERVER_TOKEN = $os.getenv('POSTMARK_SERVER_TOKEN');
 
     DEBUG && console.log('POSTMARK_SERVER_TOKEN = ', POSTMARK_SERVER_TOKEN);
 
