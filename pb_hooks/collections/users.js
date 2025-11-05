@@ -62,6 +62,7 @@ onRecordAfterUpdateSuccess((e) => {
                 plan: 'free',
                 storage_limit: 1000000000, // 1 GB
                 storage_used: 0,
+                collections_limit: 3,
                 subscription_status: 'active',
             });
 
