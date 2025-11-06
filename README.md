@@ -1,17 +1,13 @@
-# Pocketbase on Railway
-
-Open Source backend for your next SaaS and Mobile app in 1 file.
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/XfUmjI?referralCode=faraz)
-
-
-## How to
-
+# How to
 
 ### To run the Docker locally
+
 Start Docker:
-'docker compose up'
+`docker compose up`
 
 Then visit the local PocketBase admin:
-http://localhost:8090/_/
+http://localhost:8090/\_/
 
+### To get a snapshot of all collections fields and rules
+
+`docker compose exec pocketbase /pb/pocketbase migrate collections`
