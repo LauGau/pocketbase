@@ -1,0 +1,2 @@
+# This file ensures that the pb_migrations directory is committed to git,
+# even when it's empty. This is necessary for the Docker build to succeed.
