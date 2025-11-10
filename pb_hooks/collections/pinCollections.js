@@ -30,7 +30,7 @@ onRecordCreateRequest((e) => {
     }
 
     // Set the 'owner' field directly on the record object
-    record.set('owner', authRecord.id);
+    // record.set('owner', authRecord.id);
 
     e.next(); // needed to be able to access the e.record.id bellow
 
