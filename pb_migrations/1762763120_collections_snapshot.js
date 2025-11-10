@@ -1618,7 +1618,7 @@ migrate((app) => {
       "viewRule": "// Only for logged-in users\n@request.auth.id != \"\" &&\n\n// Only for users who are \"approved\" members of the related pinCollection\n(pinCollection.collectionMembers_via_pinCollection.user ?~ @request.auth.id && pinCollection.collectionMembers_via_pinCollection.status ?= \"approved\")"
     },
     {
-      "createRule": "(@request.auth.id = user && @request.body.shareToken = pinCollection.shareToken) || pinCollection.owner = @request.auth.id",
+      "createRule": "(@request.auth.id = user && @request.body.shareToken = pinCollection.shareToken) || (pinCollection.collectionMembers_via_pinCollection.user ?~ @request.auth.id && pinCollection.collectionMembers_via_pinCollection.role ?= \"owner\")",
       "deleteRule": "// Primarly used when a user is \"excluded\" from a collection\n// Last tested tested: 2025-11-10\n// Status: ✅\n\n// is user logged in ?\n@request.auth.id != \"\"\n\n// is the user an approved member on the pinCollection?\n&& (pinCollection.collectionMembers_via_pinCollection.user ?~ @request.auth.id && pinCollection.collectionMembers_via_pinCollection.status ?= \"approved\")\n\n// is user has the rights to delete (\"owner\" only)\n// && (user.id = @request.auth.id && role = \"owner\")\n&& (pinCollection.collectionMembers_via_pinCollection.user ?~ @request.auth.id && (pinCollection.collectionMembers_via_pinCollection.role ?= \"owner\") || (pinCollection.collectionMembers_via_pinCollection.role ?= \"admin\"))",
       "fields": [
         {
